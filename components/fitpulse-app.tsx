@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import {
-  Activity, ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleCheck, Clock3,
+  Activity, ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, ChevronDown, CircleCheck, Clock3,
   Dumbbell, Flame, Grid2X2, LayoutDashboard, MapPin, Menu, MoreHorizontal, Play, Plus,
   QrCode, Search, Settings2, Sparkles, Sun, Moon, Target, Users, X, Zap,
-  LogOut, Lock, Mail, AlertCircle, Info,
+  LogOut, Lock, Mail, AlertCircle, Info, Trash2, CalendarCheck, ShieldCheck, CreditCard, Award, UserCheck, RefreshCw,
 } from 'lucide-react'
 
 export type Role = 'member' | 'instructor' | 'admin' | 'simulation'
 export type Discipline = 'Gym' | 'Yoga' | 'Pilates'
+export type MemberTab = 'schedule' | 'my-schedule' | 'profile'
 
 export interface User {
   id: string
@@ -84,6 +85,20 @@ type Session = {
   day: string
 }
 
+export interface BookedSession {
+  id: number
+  sessionId: number
+  title: string
+  discipline: Discipline
+  instructor: string
+  room: string
+  time: string
+  day: string
+  date: string
+  color: string
+  status: 'confirmed' | 'attended' | 'cancelled'
+}
+
 const initialSessions: Session[] = [
   { id: 1, title: 'Reformer Foundations', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '07:00', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Mon' },
   { id: 2, title: 'Power Flow', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '08:30', duration: '60 min', booked: 14, capacity: 20, color: 'amber', day: 'Mon' },
@@ -95,6 +110,35 @@ const initialSessions: Session[] = [
   { id: 8, title: 'Evening Vinyasa', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '19:00', duration: '60 min', booked: 12, capacity: 20, color: 'amber', day: 'Fri' },
   { id: 9, title: 'Mobility Reset', discipline: 'Yoga', instructor: 'Alex Morgan', room: 'Zen Room', time: '09:00', duration: '45 min', booked: 8, capacity: 20, color: 'amber', day: 'Sat' },
   { id: 10, title: 'Open Gym Access', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '11:00', duration: 'Flexible', booked: 27, capacity: 50, color: 'emerald', day: 'Sun' },
+]
+
+const initialBookedSessions: BookedSession[] = [
+  {
+    id: 101,
+    sessionId: 1,
+    title: 'Reformer Foundations',
+    discipline: 'Pilates',
+    instructor: 'Maya Chen',
+    room: 'Reformer Studio',
+    time: '07:00',
+    day: 'Mon',
+    date: '14/10/2026',
+    color: 'violet',
+    status: 'confirmed',
+  },
+  {
+    id: 102,
+    sessionId: 5,
+    title: 'Slow Sunday Stretch',
+    discipline: 'Yoga',
+    instructor: 'Noah Williams',
+    room: 'Zen Room',
+    time: '18:00',
+    day: 'Wed',
+    date: '16/10/2026',
+    color: 'amber',
+    status: 'confirmed',
+  },
 ]
 
 function Chip({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'green' | 'violet' | 'amber' | 'red' }) {
@@ -113,7 +157,10 @@ function Logo() {
 export default function FitPulseApp() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [role, setRole] = useState<Role>('member')
+  const [memberTab, setMemberTab] = useState<MemberTab>('schedule')
   const [sessions, setSessions] = useState(initialSessions)
+  const [bookedSessions, setBookedSessions] = useState<BookedSession[]>(initialBookedSessions)
+  const [creditsLeft, setCreditsLeft] = useState(8)
   const [filter, setFilter] = useState<'All' | Discipline>('All')
   const [selected, setSelected] = useState<Session | null>(null)
   const [toast, setToast] = useState('')
@@ -121,6 +168,9 @@ export default function FitPulseApp() {
   const [activeDay, setActiveDay] = useState('Mon')
   const [lightTheme, setLightTheme] = useState(true)
   const [language, setLanguage] = useState<'vi' | 'en'>('vi')
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
   const isVi = language === 'vi'
   const t = (vi: string, en: string) => isVi ? vi : en
 
@@ -138,6 +188,17 @@ export default function FitPulseApp() {
     }
   }, [])
 
+  // Close user dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const showToast = (message: string) => {
     setToast(message)
     window.setTimeout(() => setToast(''), 2800)
@@ -147,40 +208,68 @@ export default function FitPulseApp() {
     setCurrentUser(user)
     localStorage.setItem('fitpulse_session', JSON.stringify(user))
     setRole(user.role === 'admin' ? 'admin' : user.role === 'instructor' ? 'instructor' : 'member')
+    setMemberTab('schedule')
     showToast(isVi ? `Chào mừng trở lại, ${user.name}` : `Welcome back, ${user.name}`)
   }
 
   const handleLogout = () => {
     setCurrentUser(null)
     localStorage.removeItem('fitpulse_session')
+    setUserMenuOpen(false)
     setRole('member')
+    setMemberTab('schedule')
     showToast(isVi ? 'Đã đăng xuất thành công' : 'Signed out successfully')
   }
 
   const book = (session: Session) => {
     if (session.booked >= session.capacity) return
+    if (creditsLeft <= 0) {
+      showToast(isVi ? 'Gói tập đã hết buổi khả dụng. Vui lòng gia hạn!' : 'No credits remaining. Please renew your package!')
+      return
+    }
+
     setSessions(items => items.map(item => item.id === session.id ? { ...item, booked: item.booked + 1 } : item))
+    const newBooked: BookedSession = {
+      id: Date.now(),
+      sessionId: session.id,
+      title: session.title,
+      discipline: session.discipline,
+      instructor: session.instructor,
+      room: session.room,
+      time: session.time,
+      day: session.day,
+      date: '15/10/2026',
+      color: session.color,
+      status: 'confirmed',
+    }
+    setBookedSessions(prev => [newBooked, ...prev])
+    setCreditsLeft(c => c - 1)
     setSelected(null)
-    showToast(isVi ? `Đã đặt ca ${session.title}. Còn lại 7 buổi.` : `${session.title} booked. 7 credits remaining.`)
+    showToast(isVi ? `Đã đặt ca ${session.title}. Còn lại ${creditsLeft - 1} buổi khả dụng.` : `${session.title} booked. ${creditsLeft - 1} credits remaining.`)
+  }
+
+  const cancelBooking = (bookedId: number, sessionId: number, sessionTitle: string) => {
+    setBookedSessions(prev => prev.filter(b => b.id !== bookedId))
+    setSessions(items => items.map(item => item.id === sessionId ? { ...item, booked: Math.max(0, item.booked - 1) } : item))
+    setCreditsLeft(c => c + 1)
+    showToast(isVi ? `Đã hủy ca ${sessionTitle}. Đã hoàn trả 1 buổi tập vào tài khoản.` : `Cancelled ${sessionTitle}. 1 credit restored to your package.`)
   }
 
   // Filter allowed navigation items based on logged in user's role (Strict RBAC)
-  const visibleNavItems = useMemo(() => {
-    if (!currentUser) return []
-    if (currentUser.role === 'member') {
-      return [{ id: 'member' as Role, label: isVi ? 'Giao diện hội viên' : 'Member view', icon: LayoutDashboard }]
-    }
-    if (currentUser.role === 'instructor') {
-      return [{ id: 'instructor' as Role, label: isVi ? 'Giao diện huấn luyện viên' : 'Instructor view', icon: Users }]
-    }
-    if (currentUser.role === 'admin') {
-      return [
-        { id: 'admin' as Role, label: isVi ? 'Bảng quản trị' : 'Admin dashboard', icon: BarChart3 },
-        { id: 'simulation' as Role, label: isVi ? 'Mô phỏng thuật toán' : 'Algorithm demo', icon: Zap },
-      ]
-    }
-    return []
-  }, [currentUser, isVi])
+  const memberNavItems = useMemo(() => [
+    { id: 'schedule', label: isVi ? 'Lịch tập Studio' : 'Studio schedule', icon: CalendarDays },
+    { id: 'my-schedule', label: isVi ? 'Lịch của bạn' : 'My schedule', icon: Clock3 },
+    { id: 'profile', label: isVi ? 'Hồ sơ & Thẻ hội viên' : 'Profile & Pass', icon: QrCode },
+  ], [isVi])
+
+  const instructorNavItems = useMemo(() => [
+    { id: 'instructor', label: isVi ? 'Giao diện huấn luyện viên' : 'Instructor view', icon: Users },
+  ], [isVi])
+
+  const adminNavItems = useMemo(() => [
+    { id: 'admin', label: isVi ? 'Bảng quản trị' : 'Admin dashboard', icon: BarChart3 },
+    { id: 'simulation', label: isVi ? 'Mô phỏng thuật toán' : 'Algorithm demo', icon: Zap },
+  ], [isVi])
 
   // If not logged in, render the clean Login View
   if (!currentUser) {
@@ -213,14 +302,46 @@ export default function FitPulseApp() {
         <div className="workspace-label">{t('PHÂN HỆ NGHIỆP VỤ', 'WORKSPACE')}</div>
 
         <nav className="side-nav">
-          {visibleNavItems.map(item => {
+          {currentUser.role === 'member' && memberNavItems.map(item => {
+            const Icon = item.icon
+            const isActive = memberTab === item.id
+            return (
+              <button
+                key={item.id}
+                className={`side-link ${isActive ? 'active' : ''}`}
+                onClick={() => { setMemberTab(item.id as MemberTab); setMobileNav(false) }}
+              >
+                <Icon />
+                <span>{item.label}</span>
+                {isActive && <ChevronRight className="nav-arrow" />}
+              </button>
+            )
+          })}
+
+          {currentUser.role === 'instructor' && instructorNavItems.map(item => {
             const Icon = item.icon
             const isActive = role === item.id
             return (
               <button
                 key={item.id}
                 className={`side-link ${isActive ? 'active' : ''}`}
-                onClick={() => { setRole(item.id); setMobileNav(false) }}
+                onClick={() => { setRole(item.id as Role); setMobileNav(false) }}
+              >
+                <Icon />
+                <span>{item.label}</span>
+                {isActive && <ChevronRight className="nav-arrow" />}
+              </button>
+            )
+          })}
+
+          {currentUser.role === 'admin' && adminNavItems.map(item => {
+            const Icon = item.icon
+            const isActive = role === item.id
+            return (
+              <button
+                key={item.id}
+                className={`side-link ${isActive ? 'active' : ''}`}
+                onClick={() => { setRole(item.id as Role); setMobileNav(false) }}
               >
                 <Icon />
                 <span>{item.label}</span>
@@ -231,34 +352,7 @@ export default function FitPulseApp() {
         </nav>
 
         <div className="side-spacer" />
-
-        <div className="system-card">
-          <div className="pulse-dot" />
-          <div>
-            <strong>{t('Hệ thống hoạt động', 'Systems operational')}</strong>
-            <small>{t('3 phòng tập trực tuyến', 'All studios online')}</small>
-          </div>
-          <CircleCheck />
-        </div>
-
-        {/* Profile info with active role and sign out button */}
-        <div className="profile" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div className={`avatar ${currentUser.avatarColor}`}>{currentUser.avatar}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <strong style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {currentUser.name}
-              </strong>
-              <span className={`role-badge-sidebar ${currentUser.role}`}>
-                {currentUser.role === 'member' ? t('Hội viên', 'Member') : currentUser.role === 'instructor' ? t('HLV', 'Instructor') : t('Quản trị viên', 'Admin')}
-              </span>
-            </div>
-          </div>
-          <button className="logout-button" onClick={handleLogout} title={t('Đăng xuất khỏi hệ thống', 'Sign out of system')}>
-            <LogOut />
-            <span>{t('Đăng xuất', 'Sign out')}</span>
-          </button>
-        </div>
+        {/* Notice: Bottom widget (photo 2) is completely removed as requested! */}
       </aside>
 
       <main className="main-content">
@@ -268,7 +362,9 @@ export default function FitPulseApp() {
           </button>
 
           <div className="topbar-context">
-            <span className="eyebrow">FITPULSE / {role.toUpperCase()}</span>
+            <span className="eyebrow">
+              FITPULSE / {currentUser.role === 'member' ? memberTab.toUpperCase() : role.toUpperCase()}
+            </span>
             <span className="live-status">
               <span className="pulse-dot" /> {t('Hệ thống trực tiếp', 'Live system')}
             </span>
@@ -296,22 +392,96 @@ export default function FitPulseApp() {
               <span className={isVi ? '' : 'active'}>EN</span>
             </button>
 
-            <div className={`avatar ${currentUser.avatarColor}`}>{currentUser.avatar}</div>
+            {/* User Profile Dropdown on Top Right (With Logout action inside) */}
+            <div className="user-menu-wrap" ref={userMenuRef}>
+              <button
+                className="user-menu-trigger"
+                onClick={() => setUserMenuOpen(v => !v)}
+                title={t('Tài khoản người dùng', 'User profile')}
+              >
+                <div className={`avatar ${currentUser.avatarColor}`}>{currentUser.avatar}</div>
+                <span className="user-menu-name">{currentUser.name.split(' ')[0]}</span>
+                <ChevronDown style={{ width: 13, height: 13, color: 'var(--muted)' }} />
+              </button>
+
+              {userMenuOpen && (
+                <div className="user-menu-dropdown">
+                  <div className="user-dropdown-header">
+                    <div className={`avatar ${currentUser.avatarColor}`}>{currentUser.avatar}</div>
+                    <div className="user-dropdown-info">
+                      <strong>{currentUser.name}</strong>
+                      <span>{currentUser.email}</span>
+                      <span className={`role-badge-sidebar ${currentUser.role}`} style={{ marginTop: 4 }}>
+                        {currentUser.role === 'member' ? t('Hội viên', 'Member') : currentUser.role === 'instructor' ? t('HLV', 'Instructor') : t('Quản trị viên', 'Admin')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {currentUser.role === 'member' && (
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setMemberTab('profile')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <QrCode style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                      <span>{t('Thông tin & Thẻ hội viên', 'Profile & Pass')}</span>
+                    </button>
+                  )}
+
+                  <div style={{ height: 1, background: 'var(--line)', margin: '4px 0' }} />
+
+                  <button className="user-dropdown-item danger" onClick={handleLogout}>
+                    <LogOut style={{ width: 14, height: 14 }} />
+                    <span>{t('Đăng xuất tài khoản', 'Sign out')}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
         <div className="content-wrap">
-          {role === 'member' && currentUser.role === 'member' && (
-            <MemberView
-              sessions={sessions}
-              filter={filter}
-              setFilter={setFilter}
-              activeDay={activeDay}
-              setActiveDay={setActiveDay}
-              onSelect={setSelected}
-              isVi={isVi}
-              user={currentUser}
-            />
+          {currentUser.role === 'member' && (
+            <>
+              {memberTab === 'schedule' && (
+                <MemberView
+                  sessions={sessions}
+                  filter={filter}
+                  setFilter={setFilter}
+                  activeDay={activeDay}
+                  setActiveDay={setActiveDay}
+                  onSelect={setSelected}
+                  isVi={isVi}
+                  user={currentUser}
+                  creditsLeft={creditsLeft}
+                  onGoToProfile={() => setMemberTab('profile')}
+                  onGoToMySchedule={() => setMemberTab('my-schedule')}
+                />
+              )}
+
+              {memberTab === 'my-schedule' && (
+                <MyScheduleView
+                  bookedSessions={bookedSessions}
+                  onCancel={cancelBooking}
+                  onGoToExplore={() => setMemberTab('schedule')}
+                  isVi={isVi}
+                  showToast={showToast}
+                />
+              )}
+
+              {memberTab === 'profile' && (
+                <MemberProfileView
+                  user={currentUser}
+                  creditsLeft={creditsLeft}
+                  bookedSessions={bookedSessions}
+                  isVi={isVi}
+                  onGoToSchedule={() => setMemberTab('schedule')}
+                  showToast={showToast}
+                />
+              )}
+            </>
           )}
 
           {role === 'instructor' && currentUser.role === 'instructor' && (
@@ -328,14 +498,14 @@ export default function FitPulseApp() {
         </div>
       </main>
 
-      {selected && <BookingModal session={selected} onClose={() => setSelected(null)} onBook={book} isVi={isVi} />}
+      {selected && <BookingModal session={selected} onClose={() => setSelected(null)} onBook={book} isVi={isVi} creditsLeft={creditsLeft} />}
       {toast && <div className="toast"><CircleCheck />{toast}</div>}
     </div>
   )
 }
 
 /* ==========================================================================
-   LOGIN VIEW COMPONENT (WITH DEMO CREDENTIALS INFORMATION)
+   LOGIN VIEW COMPONENT (SPLIT-SCREEN WITH BACKGROUND & FULL TOGGLES)
    ========================================================================== */
 function LoginView({
   onLogin,
@@ -380,6 +550,7 @@ function LoginView({
 
   return (
     <div className="login-shell">
+      {/* Floating Controls at Top Right (Z-INDEX 50 so never clipped or hidden) */}
       <div className="login-topbar">
         <button
           className="theme-toggle"
@@ -401,6 +572,7 @@ function LoginView({
       </div>
 
       <div className="login-container">
+        {/* Left Side: Hero Brand Showcase */}
         <div className="login-hero">
           <div className="login-hero-eyebrow">
             <Sparkles style={{ width: 14, height: 14 }} />
@@ -446,110 +618,111 @@ function LoginView({
           </div>
         </div>
 
+        {/* Right Side: The Login Card */}
         <div className="login-card">
-        <div className="login-header">
-          <Logo />
-          <h1>{t('Đăng nhập vào FitPulse', 'Sign in to FitPulse')}</h1>
-          <p>
-            {t(
-              'Hệ thống quản lý và điều phối lịch tập tổ hợp Gym, Yoga & Pilates',
-              'Multi-disciplinary Fitness & Wellness Management Platform'
+          <div className="login-header">
+            <Logo />
+            <h1>{t('Đăng nhập vào FitPulse', 'Sign in to FitPulse')}</h1>
+            <p>
+              {t(
+                'Hệ thống quản lý và điều phối lịch tập tổ hợp Gym, Yoga & Pilates',
+                'Multi-disciplinary Fitness & Wellness Management Platform'
+              )}
+            </p>
+          </div>
+
+          <form className="login-form" onSubmit={handleSubmit}>
+            {error && (
+              <div className="login-error">
+                <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
+                <span>{error}</span>
+              </div>
             )}
-          </p>
-        </div>
 
-        <form className="login-form" onSubmit={handleSubmit}>
-          {error && (
-            <div className="login-error">
-              <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="email">{t('Địa chỉ Email', 'Email Address')}</label>
-            <div className="input-with-icon">
-              <Mail />
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="name@fitpulse.com"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">{t('Mật khẩu', 'Password')}</label>
-            <div className="input-with-icon">
-              <Lock />
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••"
-                required
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="button button-primary full-width"
-            style={{ padding: '12px', marginTop: '6px' }}
-            disabled={loading}
-          >
-            {loading ? t('Đang xác thực...', 'Authenticating...') : t('Đăng nhập vào hệ thống', 'Sign In to System')}
-            {!loading && <ArrowUpRight />}
-          </button>
-        </form>
-
-        {/* Informational block for testing/grading accounts */}
-        <div className="demo-info-card">
-          <div className="demo-info-title">
-            <Info />
-            <span>{t('THÔNG TIN TÀI KHOẢN TRUY CẬP (KIỂM THỬ HỆ THỐNG)', 'ACCESS CREDENTIALS FOR SYSTEM EVALUATION')}</span>
-          </div>
-
-          <div className="demo-accounts-table">
-            <div className="demo-account-row">
-              <div className="demo-role-badge member">
-                <LayoutDashboard style={{ width: 13, height: 13 }} />
-                <span>{t('Hội viên (Member):', 'Member Role:')}</span>
-              </div>
-              <div className="demo-credentials">
-                <code>jordan@fitpulse.com</code> / <code>123456</code>
+            <div className="form-group">
+              <label htmlFor="email">{t('Địa chỉ Email', 'Email Address')}</label>
+              <div className="input-with-icon">
+                <Mail />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="name@fitpulse.com"
+                  required
+                />
               </div>
             </div>
 
-            <div className="demo-account-row">
-              <div className="demo-role-badge instructor">
-                <Users style={{ width: 13, height: 13 }} />
-                <span>{t('Huấn luyện viên (Coach):', 'Instructor Role:')}</span>
-              </div>
-              <div className="demo-credentials">
-                <code>maya@fitpulse.com</code> / <code>123456</code>
+            <div className="form-group">
+              <label htmlFor="password">{t('Mật khẩu', 'Password')}</label>
+              <div className="input-with-icon">
+                <Lock />
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••"
+                  required
+                />
               </div>
             </div>
 
-            <div className="demo-account-row">
-              <div className="demo-role-badge admin">
-                <BarChart3 style={{ width: 13, height: 13 }} />
-                <span>{t('Quản trị viên (Admin):', 'Admin Role:')}</span>
+            <button
+              type="submit"
+              className="button button-primary full-width"
+              style={{ padding: '12px', marginTop: '6px' }}
+              disabled={loading}
+            >
+              {loading ? t('Đang xác thực...', 'Authenticating...') : t('Đăng nhập vào hệ thống', 'Sign In to System')}
+              {!loading && <ArrowUpRight />}
+            </button>
+          </form>
+
+          {/* Informational block for testing/grading accounts */}
+          <div className="demo-info-card">
+            <div className="demo-info-title">
+              <Info />
+              <span>{t('THÔNG TIN TÀI KHOẢN TRUY CẬP (KIỂM THỬ HỆ THỐNG)', 'ACCESS CREDENTIALS FOR SYSTEM EVALUATION')}</span>
+            </div>
+
+            <div className="demo-accounts-table">
+              <div className="demo-account-row">
+                <div className="demo-role-badge member">
+                  <LayoutDashboard style={{ width: 13, height: 13 }} />
+                  <span>{t('Hội viên (Member):', 'Member Role:')}</span>
+                </div>
+                <div className="demo-credentials">
+                  <code>jordan@fitpulse.com</code> / <code>123456</code>
+                </div>
               </div>
-              <div className="demo-credentials">
-                <code>admin@fitpulse.com</code> / <code>123456</code>
+
+              <div className="demo-account-row">
+                <div className="demo-role-badge instructor">
+                  <Users style={{ width: 13, height: 13 }} />
+                  <span>{t('Huấn luyện viên (Coach):', 'Instructor Role:')}</span>
+                </div>
+                <div className="demo-credentials">
+                  <code>maya@fitpulse.com</code> / <code>123456</code>
+                </div>
+              </div>
+
+              <div className="demo-account-row">
+                <div className="demo-role-badge admin">
+                  <BarChart3 style={{ width: 13, height: 13 }} />
+                  <span>{t('Quản trị viên (Admin):', 'Admin Role:')}</span>
+                </div>
+                <div className="demo-credentials">
+                  <code>admin@fitpulse.com</code> / <code>123456</code>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-)
+  )
 }
 
 function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
@@ -566,10 +739,10 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; 
 }
 
 /* ==========================================================================
-   MEMBER VIEW
+   PAGE 1: MEMBER STUDIO EXPLORE & BOOKING (MEMBER VIEW)
    ========================================================================== */
 function MemberView({
-  sessions, filter, setFilter, activeDay, setActiveDay, onSelect, isVi, user
+  sessions, filter, setFilter, activeDay, setActiveDay, onSelect, isVi, user, creditsLeft, onGoToProfile, onGoToMySchedule
 }: {
   sessions: Session[]
   filter: 'All' | Discipline
@@ -579,6 +752,9 @@ function MemberView({
   onSelect: (s: Session) => void
   isVi: boolean
   user: User
+  creditsLeft: number
+  onGoToProfile: () => void
+  onGoToMySchedule: () => void
 }) {
   const filtered = sessions.filter(s => (filter === 'All' || s.discipline === filter) && s.day === activeDay)
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -596,8 +772,8 @@ function MemberView({
     pilates: 'Pilates reformer',
     empty: 'Không có buổi tập phù hợp.',
     streak: 'Bạn đã duy trì chuỗi 4 tuần',
-    goal: 'Thêm hai buổi tập để đạt mục tiêu tháng.',
-    monthly: 'Mục tiêu tháng'
+    goal: `Còn ${creditsLeft} buổi tập khả dụng trong tháng này.`,
+    monthly: 'Buổi tập khả dụng'
   } : {
     eyebrow: `Good morning, ${user.name.split(' ')[0]}`,
     title: 'Your week, in motion.',
@@ -612,8 +788,8 @@ function MemberView({
     pilates: 'Pilates reformer',
     empty: 'No sessions match this filter.',
     streak: "You're on a 4 week streak",
-    goal: 'Two more sessions to reach your monthly goal.',
-    monthly: 'Monthly goal'
+    goal: `${creditsLeft} credits remaining in your active package.`,
+    monthly: 'Remaining credits'
   }
 
   return (
@@ -622,8 +798,18 @@ function MemberView({
         eyebrow={copy.eyebrow}
         title={copy.title}
         description={copy.description}
-        action={<button className="button button-primary"><QrCode /> {copy.card}</button>}
+        action={
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="button button-ghost" onClick={onGoToMySchedule}>
+              <Clock3 /> {isVi ? 'Lịch của bạn' : 'My Schedule'}
+            </button>
+            <button className="button button-primary" onClick={onGoToProfile}>
+              <QrCode /> {copy.card}
+            </button>
+          </div>
+        }
       />
+
       <div className="member-grid">
         <section className="schedule-panel">
           <div className="section-heading">
@@ -663,7 +849,7 @@ function MemberView({
           </div>
         </section>
 
-        <MembershipCard user={user} isVi={isVi} />
+        <MembershipCard user={user} isVi={isVi} creditsLeft={creditsLeft} onGoToProfile={onGoToProfile} />
       </div>
 
       <div className="insight-strip">
@@ -675,9 +861,9 @@ function MemberView({
         <div className="progress-wrap">
           <div className="progress-label">
             <span>{copy.monthly}</span>
-            <strong>6 / 8 sessions</strong>
+            <strong>{creditsLeft} / 10 sessions</strong>
           </div>
-          <div className="progress"><i style={{ width: '75%' }} /></div>
+          <div className="progress"><i style={{ width: `${(creditsLeft / 10) * 100}%` }} /></div>
         </div>
         <ArrowUpRight />
       </div>
@@ -722,7 +908,7 @@ function SessionRow({ session, onSelect, isVi }: { session: Session; onSelect: (
   )
 }
 
-function MembershipCard({ user, isVi }: { user: User; isVi: boolean }) {
+function MembershipCard({ user, isVi, creditsLeft, onGoToProfile }: { user: User; isVi: boolean; creditsLeft: number; onGoToProfile?: () => void }) {
   return (
     <aside className="membership-card">
       <div className="membership-top">
@@ -736,14 +922,14 @@ function MembershipCard({ user, isVi }: { user: User; isVi: boolean }) {
           <span>{user.plan}</span>
         </div>
       </div>
-      <div className="qr-box">
+      <div className="qr-box" onClick={onGoToProfile} style={{ cursor: onGoToProfile ? 'pointer' : 'default' }} title={isVi ? 'Nhấn để xem thẻ chi tiết' : 'Click to view full pass'}>
         <div className="qr-pattern"><QrCode /></div>
         <span>{isVi ? 'Quét mã để điểm danh' : 'Scan to check in'}</span>
       </div>
       <div className="membership-footer">
         <div>
           <span>{isVi ? 'Số buổi còn' : 'Sessions left'}</span>
-          <strong>08</strong>
+          <strong>0{creditsLeft}</strong>
         </div>
         <div>
           <span>{isVi ? 'Hạn gia hạn' : 'Renews in'}</span>
@@ -755,7 +941,7 @@ function MembershipCard({ user, isVi }: { user: User; isVi: boolean }) {
   )
 }
 
-function BookingModal({ session, onClose, onBook, isVi }: { session: Session; onClose: () => void; onBook: (s: Session) => void; isVi: boolean }) {
+function BookingModal({ session, onClose, onBook, isVi, creditsLeft }: { session: Session; onClose: () => void; onBook: (s: Session) => void; isVi: boolean; creditsLeft: number }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -772,7 +958,7 @@ function BookingModal({ session, onClose, onBook, isVi }: { session: Session; on
           </div>
           <div className="credit-box">
             <div>
-              <strong>8</strong>
+              <strong>{creditsLeft}</strong>
               <span>{isVi ? 'buổi tập khả dụng' : 'credits remaining'}</span>
             </div>
             <span className="credit-arrow">− 1 {isVi ? 'buổi' : 'credit'}</span>
@@ -786,6 +972,324 @@ function BookingModal({ session, onClose, onBook, isVi }: { session: Session; on
         </div>
       </div>
     </div>
+  )
+}
+
+/* ==========================================================================
+   PAGE 2: MY SCHEDULE / BOOKED SESSIONS VIEW (NEW PAGE)
+   ========================================================================== */
+function MyScheduleView({
+  bookedSessions,
+  onCancel,
+  onGoToExplore,
+  isVi,
+  showToast,
+}: {
+  bookedSessions: BookedSession[]
+  onCancel: (bookedId: number, sessionId: number, title: string) => void
+  onGoToExplore: () => void
+  isVi: boolean
+  showToast: (msg: string) => void
+}) {
+  return (
+    <>
+      <PageHeader
+        eyebrow={isVi ? 'Quản lý lịch học của bạn' : 'Your Personal Calendar'}
+        title={isVi ? 'Lịch tập đã đặt của bạn.' : 'Your booked sessions.'}
+        description={isVi ? 'Theo dõi các ca học sắp diễn ra, hủy lịch hoặc đồng bộ vào lịch cá nhân.' : 'Track your upcoming classes, cancel bookings, or sync with your calendar.'}
+        action={
+          <button className="button button-primary" onClick={onGoToExplore}>
+            <Plus /> {isVi ? 'Đặt thêm ca học mới' : 'Book another session'}
+          </button>
+        }
+      />
+
+      {bookedSessions.length > 0 && (
+        <div className="next-session-banner">
+          <div className="next-session-info">
+            <div className="next-session-icon">
+              <Clock3 style={{ width: 22, height: 22 }} />
+            </div>
+            <div>
+              <strong>{isVi ? 'Ca tập tiếp theo: ' : 'Next up: '}{bookedSessions[0].title}</strong>
+              <p>
+                {bookedSessions[0].day}, {bookedSessions[0].time} · {bookedSessions[0].room} · HLV: {bookedSessions[0].instructor}
+              </p>
+            </div>
+          </div>
+          <Chip tone="green">
+            <span className="pulse-dot" /> {isVi ? 'Đã xác nhận chỗ' : 'Confirmed'}
+          </Chip>
+        </div>
+      )}
+
+      <div className="detail-card">
+        <div className="section-heading" style={{ marginBottom: 18 }}>
+          <div>
+            <h2>{isVi ? 'Danh sách ca tập đã đăng ký' : 'Registered classes'}</h2>
+            <p>{bookedSessions.length} {isVi ? 'ca học đang hoạt động' : 'active bookings'}</p>
+          </div>
+          <button className="button button-ghost" onClick={() => showToast(isVi ? 'Đã đồng bộ lịch với Google Calendar!' : 'Calendar synced with Google Calendar!')}>
+            <CalendarCheck /> {isVi ? 'Đồng bộ Google Calendar' : 'Sync Calendar'}
+          </button>
+        </div>
+
+        {bookedSessions.length === 0 ? (
+          <div className="empty-state" style={{ padding: '50px 20px' }}>
+            <CalendarDays style={{ width: 36, height: 36, color: 'var(--muted)', margin: '0 auto 12px' }} />
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
+              {isVi ? 'Bạn chưa đặt ca tập nào.' : 'You have no booked sessions yet.'}
+            </p>
+            <p style={{ margin: '0 0 16px', color: 'var(--muted)' }}>
+              {isVi ? 'Khám phá các ca Gym, Yoga và Pilates Reformer trong tuần và đặt chỗ ngay!' : 'Explore our weekly schedule and reserve your spot!'}
+            </p>
+            <button className="button button-primary" onClick={onGoToExplore}>
+              <Plus /> {isVi ? 'Khám phá lịch Studio' : 'Explore Schedule'}
+            </button>
+          </div>
+        ) : (
+          <div className="my-schedule-list">
+            {bookedSessions.map(item => (
+              <div className="booked-card" key={item.id}>
+                <div className="booked-card-left">
+                  <div className={`discipline-icon ${item.color}`}>
+                    {item.discipline === 'Gym' ? <Dumbbell /> : item.discipline === 'Yoga' ? <Activity /> : <Target />}
+                  </div>
+                  <div className="booked-card-main">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <strong>{item.title}</strong>
+                      <Chip tone="green">{isVi ? 'Đã đặt' : 'Booked'}</Chip>
+                    </div>
+                    <div className="booked-card-meta">
+                      <span><CalendarDays style={{ width: 12, height: 12 }} /> {item.day}, {item.date}</span>
+                      <span><Clock3 style={{ width: 12, height: 12 }} /> {item.time}</span>
+                      <span><Users style={{ width: 12, height: 12 }} /> {item.instructor}</span>
+                      <span><MapPin style={{ width: 12, height: 12 }} /> {item.room}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="booked-card-actions">
+                  <button
+                    className="button button-ghost"
+                    onClick={() => cancelBooking(item.id, item.sessionId, item.title)}
+                    style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
+                    title={isVi ? 'Hủy ca và hoàn trả buổi tập' : 'Cancel booking and refund credit'}
+                  >
+                    <Trash2 style={{ width: 13, height: 13 }} />
+                    <span>{isVi ? 'Hủy ca' : 'Cancel'}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+/* ==========================================================================
+   PAGE 3: DETAILED PROFILE & MEMBERSHIP PASS VIEW (NEW PAGE)
+   ========================================================================== */
+function MemberProfileView({
+  user,
+  creditsLeft,
+  bookedSessions,
+  isVi,
+  onGoToSchedule,
+  showToast,
+}: {
+  user: User
+  creditsLeft: number
+  bookedSessions: BookedSession[]
+  isVi: boolean
+  onGoToSchedule: () => void
+  showToast: (msg: string) => void
+}) {
+  const [tokenCountdown, setTokenCountdown] = useState(45)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTokenCountdown(t => (t <= 1 ? 45 : t - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  return (
+    <>
+      <PageHeader
+        eyebrow={isVi ? 'Tài khoản & Thẻ định danh' : 'Account & Pass Overview'}
+        title={isVi ? 'Thông tin chi tiết hội viên.' : 'Member profile & pass.'}
+        description={isVi ? 'Xem thông tin gói tập hiện tại, quyền lợi thành viên và thẻ kỹ thuật số.' : 'Manage your subscription, member benefits, and digital check-in token.'}
+        action={
+          <button className="button button-primary" onClick={onGoToSchedule}>
+            <CalendarDays /> {isVi ? 'Xem lịch tập' : 'Studio schedule'}
+          </button>
+        }
+      />
+
+      <div className="profile-grid-layout">
+        {/* Left Column: Plan details & Perks & History */}
+        <div>
+          <div className="detail-card">
+            <div className="profile-header-strip">
+              <div className={`avatar avatar-large ${user.avatarColor}`} style={{ width: 52, height: 52, fontSize: 16 }}>
+                {user.avatar}
+              </div>
+              <div className="profile-header-info">
+                <h2>{user.name}</h2>
+                <span>{user.email} · Mã hội viên: <strong>FP-2026-8921-JD</strong></span>
+                <div style={{ marginTop: 6 }}>
+                  <Chip tone="green">
+                    <ShieldCheck style={{ width: 12, height: 12 }} />
+                    {isVi ? 'Hội viên chính thức' : 'Verified Member'}
+                  </Chip>
+                </div>
+              </div>
+            </div>
+
+            <div className="section-heading">
+              <div>
+                <h2>{isVi ? 'Gói thành viên hiện tại' : 'Active membership package'}</h2>
+                <p>Pro · All Access Multi-Disciplinary (Gym + Yoga + Pilates)</p>
+              </div>
+              <Chip tone="violet">{isVi ? 'Gói cao cấp' : 'Pro Tier'}</Chip>
+            </div>
+
+            <div style={{ margin: '20px 0 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
+                <span style={{ color: 'var(--muted)', fontWeight: 600 }}>{isVi ? 'Số buổi tập khả dụng trong tháng' : 'Remaining monthly session credits'}</span>
+                <strong style={{ color: 'var(--text)' }}>{creditsLeft} / 10 {isVi ? 'buổi' : 'credits'}</strong>
+              </div>
+              <div className="progress" style={{ height: 8 }}>
+                <i style={{ width: `${(creditsLeft / 10) * 100}%` }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 18 }}>
+              <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Hạn sử dụng' : 'Valid until'}</span>
+                <strong style={{ fontSize: 13, color: 'var(--text)', display: 'block', marginTop: 4 }}>14/11/2026</strong>
+              </div>
+              <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Ngày gia hạn' : 'Renews in'}</span>
+                <strong style={{ fontSize: 13, color: 'var(--teal)', display: 'block', marginTop: 4 }}>12 {isVi ? 'ngày' : 'days'}</strong>
+              </div>
+              <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Trạng thái' : 'Billing state'}</span>
+                <strong style={{ fontSize: 13, color: 'var(--lime)', display: 'block', marginTop: 4 }}>{isVi ? 'Tự động' : 'Auto-renew'}</strong>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+              <div className="eyebrow" style={{ marginBottom: 10 }}>{isVi ? 'ĐẶC QUYỀN GÓI PRO' : 'PACKAGE PERKS & BENEFITS'}</div>
+              <div className="perks-grid">
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? 'Tủ đồ thông minh RFID' : 'Smart RFID Locker'}</span>
+                </div>
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? 'Khăn tập & Nước khoáng ion' : 'Free Towel & Ion Water'}</span>
+                </div>
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? '1 buổi InBody hàng tháng' : 'Monthly InBody Analysis'}</span>
+                </div>
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? 'Đặt trước máy Reformer' : 'Reformer Priority Booking'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="detail-card">
+            <div className="section-heading">
+              <div>
+                <h2>{isVi ? 'Lịch sử check-in gần nhất' : 'Recent attendance log'}</h2>
+                <p>{isVi ? 'Nhật ký 4 buổi tập đã hoàn thành' : 'Last 4 completed workout sessions'}</p>
+              </div>
+              <button className="button button-ghost" onClick={() => showToast(isVi ? 'Đang trích xuất lịch sử tập luyện...' : 'Exporting workout report...')}>
+                <ArrowUpRight /> {isVi ? 'Xuất báo cáo' : 'Export log'}
+              </button>
+            </div>
+
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{isVi ? 'Ngày' : 'Date'}</th>
+                    <th>{isVi ? 'Bộ môn' : 'Discipline'}</th>
+                    <th>{isVi ? 'Ca học' : 'Class'}</th>
+                    <th>{isVi ? 'HLV' : 'Trainer'}</th>
+                    <th>{isVi ? 'Trạng thái' : 'Status'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['13/10/2026', 'Pilates', 'Athletic Reformer', 'Maya Chen', isVi ? 'Đã tham gia' : 'Checked-in'],
+                    ['11/10/2026', 'Yoga', 'Power Flow', 'Noah Williams', isVi ? 'Đã tham gia' : 'Checked-in'],
+                    ['09/10/2026', 'Gym', 'Strength Lab', 'Alex Morgan', isVi ? 'Đã tham gia' : 'Checked-in'],
+                    ['06/10/2026', 'Pilates', 'Core & Control', 'Maya Chen', isVi ? 'Đã tham gia' : 'Checked-in'],
+                  ].map((row, idx) => (
+                    <tr key={idx}>
+                      <td><strong>{row[0]}</strong></td>
+                      <td>
+                        <span className={`chip chip-${row[1] === 'Gym' ? 'green' : row[1] === 'Yoga' ? 'amber' : 'violet'}`}>
+                          {row[1]}
+                        </span>
+                      </td>
+                      <td>{row[2]}</td>
+                      <td>{row[3]}</td>
+                      <td><Chip tone="green"><Check style={{ width: 10, height: 10 }} /> {row[4]}</Chip></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Digital Pass QR & Card */}
+        <div>
+          <div className="detail-card" style={{ textAlign: 'center' }}>
+            <div className="eyebrow" style={{ marginBottom: 8 }}>FITPULSE OFFICIAL PASS</div>
+            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text)' }}>
+              {isVi ? 'Thẻ định danh điện tử' : 'Digital Studio Pass'}
+            </h2>
+
+            <div className="qr-box" style={{ width: 220, height: 220, margin: '0 auto 16px', padding: 18 }}>
+              <div className="qr-pattern" style={{ width: 150, height: 150 }}>
+                <QrCode style={{ width: 140, height: 140 }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--muted)', marginBottom: 18 }}>
+              <RefreshCw style={{ width: 12, height: 12, color: 'var(--teal)' }} />
+              <span>{isVi ? `Mã token tự động làm mới sau ${tokenCountdown}s` : `Security token refreshes in ${tokenCountdown}s`}</span>
+            </div>
+
+            <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)', marginBottom: 18, textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                <span style={{ color: 'var(--muted)' }}>{isVi ? 'Mã thẻ thành viên' : 'Member Barcode'}</span>
+                <strong style={{ color: 'var(--text)', fontFamily: 'monospace' }}>FP-8921-JD</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                <span style={{ color: 'var(--muted)' }}>{isVi ? 'Tình trạng thẻ' : 'Card Status'}</span>
+                <span style={{ color: 'var(--teal)', fontWeight: 700 }}>{isVi ? 'Đã kích hoạt' : 'Active & Verified'}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button className="button button-primary full-width" onClick={() => showToast(isVi ? 'Đã tải mã QR thẻ hội viên về thiết bị!' : 'QR Pass saved to device!')}>
+                <QrCode /> {isVi ? 'Tải mã QR về máy' : 'Download QR Code'}
+              </button>
+              <button className="button button-ghost full-width" onClick={() => showToast(isVi ? 'Đã đồng bộ thẻ vào Apple Wallet!' : 'Added pass to Apple Wallet!')}>
+                <CreditCard /> {isVi ? 'Thêm vào Apple / Google Wallet' : 'Add to Wallet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
 
