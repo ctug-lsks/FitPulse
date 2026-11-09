@@ -1,0 +1,1193 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Activity, ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleCheck, Clock3,
+  Dumbbell, Flame, Grid2X2, LayoutDashboard, MapPin, Menu, MoreHorizontal, Play, Plus,
+  QrCode, Search, Settings2, Sparkles, Sun, Moon, Target, Users, X, Zap,
+  LogOut, Lock, Mail, AlertCircle, Info,
+} from 'lucide-react'
+
+export type Role = 'member' | 'instructor' | 'admin' | 'simulation'
+export type Discipline = 'Gym' | 'Yoga' | 'Pilates'
+
+export interface User {
+  id: string
+  email: string
+  name: string
+  role: 'member' | 'instructor' | 'admin'
+  avatar: string
+  avatarColor: string
+  subtitle: { vi: string; en: string }
+  plan: string
+}
+
+export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | 'instructor' | 'admin'; user: User }[] = [
+  {
+    email: 'jordan@fitpulse.com',
+    pass: '123456',
+    role: 'member',
+    user: {
+      id: 'usr_member',
+      email: 'jordan@fitpulse.com',
+      name: 'Jordan Davis',
+      role: 'member',
+      avatar: 'JD',
+      avatarColor: 'avatar-lime',
+      subtitle: { vi: 'Hội viên hoạt động', en: 'Active member' },
+      plan: 'Pro · All access (8 credits remaining)',
+    },
+  },
+  {
+    email: 'maya@fitpulse.com',
+    pass: '123456',
+    role: 'instructor',
+    user: {
+      id: 'usr_coach',
+      email: 'maya@fitpulse.com',
+      name: 'Maya Chen',
+      role: 'instructor',
+      avatar: 'MC',
+      avatarColor: 'avatar-1',
+      subtitle: { vi: 'HLV Trưởng Pilates & Yoga', en: 'Senior Reformer Coach' },
+      plan: 'Certified Instructor',
+    },
+  },
+  {
+    email: 'admin@fitpulse.com',
+    pass: '123456',
+    role: 'admin',
+    user: {
+      id: 'usr_admin',
+      email: 'admin@fitpulse.com',
+      name: 'Alex Morgan',
+      role: 'admin',
+      avatar: 'AM',
+      avatarColor: 'avatar-2',
+      subtitle: { vi: 'Giám đốc Điều hành Cơ sở', en: 'Studio Operations Director' },
+      plan: 'Studio Administrator',
+    },
+  },
+]
+
+type Session = {
+  id: number
+  title: string
+  discipline: Discipline
+  instructor: string
+  room: string
+  time: string
+  duration: string
+  booked: number
+  capacity: number
+  color: string
+  day: string
+}
+
+const initialSessions: Session[] = [
+  { id: 1, title: 'Reformer Foundations', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '07:00', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Mon' },
+  { id: 2, title: 'Power Flow', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '08:30', duration: '60 min', booked: 14, capacity: 20, color: 'amber', day: 'Mon' },
+  { id: 3, title: 'Open Gym Access', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '10:00', duration: 'Flexible', booked: 32, capacity: 50, color: 'emerald', day: 'Mon' },
+  { id: 4, title: 'Core & Control', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '12:00', duration: '50 min', booked: 6, capacity: 6, color: 'violet', day: 'Tue' },
+  { id: 5, title: 'Slow Sunday Stretch', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '18:00', duration: '60 min', booked: 18, capacity: 20, color: 'amber', day: 'Wed' },
+  { id: 6, title: 'Strength Lab', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '18:30', duration: '45 min', booked: 41, capacity: 50, color: 'emerald', day: 'Thu' },
+  { id: 7, title: 'Athletic Reformer', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '17:30', duration: '50 min', booked: 4, capacity: 6, color: 'violet', day: 'Fri' },
+  { id: 8, title: 'Evening Vinyasa', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '19:00', duration: '60 min', booked: 12, capacity: 20, color: 'amber', day: 'Fri' },
+  { id: 9, title: 'Mobility Reset', discipline: 'Yoga', instructor: 'Alex Morgan', room: 'Zen Room', time: '09:00', duration: '45 min', booked: 8, capacity: 20, color: 'amber', day: 'Sat' },
+  { id: 10, title: 'Open Gym Access', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '11:00', duration: 'Flexible', booked: 27, capacity: 50, color: 'emerald', day: 'Sun' },
+]
+
+function Chip({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'green' | 'violet' | 'amber' | 'red' }) {
+  return <span className={`chip chip-${tone}`}>{children}</span>
+}
+
+function Logo() {
+  return (
+    <div className="logo">
+      <div className="logo-mark"><Activity /></div>
+      <span>fit<span>pulse</span></span>
+    </div>
+  )
+}
+
+export default function FitPulseApp() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [role, setRole] = useState<Role>('member')
+  const [sessions, setSessions] = useState(initialSessions)
+  const [filter, setFilter] = useState<'All' | Discipline>('All')
+  const [selected, setSelected] = useState<Session | null>(null)
+  const [toast, setToast] = useState('')
+  const [mobileNav, setMobileNav] = useState(false)
+  const [activeDay, setActiveDay] = useState('Mon')
+  const [lightTheme, setLightTheme] = useState(true)
+  const [language, setLanguage] = useState<'vi' | 'en'>('vi')
+  const isVi = language === 'vi'
+  const t = (vi: string, en: string) => isVi ? vi : en
+
+  // Load user from localStorage on client mount
+  useEffect(() => {
+    const saved = localStorage.getItem('fitpulse_session')
+    if (saved) {
+      try {
+        const parsed: User = JSON.parse(saved)
+        setCurrentUser(parsed)
+        setRole(parsed.role === 'admin' ? 'admin' : parsed.role === 'instructor' ? 'instructor' : 'member')
+      } catch (e) {
+        localStorage.removeItem('fitpulse_session')
+      }
+    }
+  }, [])
+
+  const showToast = (message: string) => {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 2800)
+  }
+
+  const handleLogin = (user: User) => {
+    setCurrentUser(user)
+    localStorage.setItem('fitpulse_session', JSON.stringify(user))
+    setRole(user.role === 'admin' ? 'admin' : user.role === 'instructor' ? 'instructor' : 'member')
+    showToast(isVi ? `Chào mừng trở lại, ${user.name}` : `Welcome back, ${user.name}`)
+  }
+
+  const handleLogout = () => {
+    setCurrentUser(null)
+    localStorage.removeItem('fitpulse_session')
+    setRole('member')
+    showToast(isVi ? 'Đã đăng xuất thành công' : 'Signed out successfully')
+  }
+
+  const book = (session: Session) => {
+    if (session.booked >= session.capacity) return
+    setSessions(items => items.map(item => item.id === session.id ? { ...item, booked: item.booked + 1 } : item))
+    setSelected(null)
+    showToast(isVi ? `Đã đặt ca ${session.title}. Còn lại 7 buổi.` : `${session.title} booked. 7 credits remaining.`)
+  }
+
+  // Filter allowed navigation items based on logged in user's role (Strict RBAC)
+  const visibleNavItems = useMemo(() => {
+    if (!currentUser) return []
+    if (currentUser.role === 'member') {
+      return [{ id: 'member' as Role, label: isVi ? 'Giao diện hội viên' : 'Member view', icon: LayoutDashboard }]
+    }
+    if (currentUser.role === 'instructor') {
+      return [{ id: 'instructor' as Role, label: isVi ? 'Giao diện huấn luyện viên' : 'Instructor view', icon: Users }]
+    }
+    if (currentUser.role === 'admin') {
+      return [
+        { id: 'admin' as Role, label: isVi ? 'Bảng quản trị' : 'Admin dashboard', icon: BarChart3 },
+        { id: 'simulation' as Role, label: isVi ? 'Mô phỏng thuật toán' : 'Algorithm demo', icon: Zap },
+      ]
+    }
+    return []
+  }, [currentUser, isVi])
+
+  // If not logged in, render the clean Login View
+  if (!currentUser) {
+    return (
+      <div className={`app-shell ${lightTheme ? 'theme-light' : ''}`}>
+        <LoginView
+          onLogin={handleLogin}
+          lightTheme={lightTheme}
+          setLightTheme={setLightTheme}
+          language={language}
+          setLanguage={setLanguage}
+          isVi={isVi}
+          t={t}
+        />
+        {toast && <div className="toast"><CircleCheck />{toast}</div>}
+      </div>
+    )
+  }
+
+  return (
+    <div className={`app-shell ${lightTheme ? 'theme-light' : ''}`}>
+      <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-top">
+          <Logo />
+          <button className="icon-button mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu">
+            <X />
+          </button>
+        </div>
+
+        <div className="workspace-label">{t('PHÂN HỆ NGHIỆP VỤ', 'WORKSPACE')}</div>
+
+        <nav className="side-nav">
+          {visibleNavItems.map(item => {
+            const Icon = item.icon
+            const isActive = role === item.id
+            return (
+              <button
+                key={item.id}
+                className={`side-link ${isActive ? 'active' : ''}`}
+                onClick={() => { setRole(item.id); setMobileNav(false) }}
+              >
+                <Icon />
+                <span>{item.label}</span>
+                {isActive && <ChevronRight className="nav-arrow" />}
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="side-spacer" />
+
+        <div className="system-card">
+          <div className="pulse-dot" />
+          <div>
+            <strong>{t('Hệ thống hoạt động', 'Systems operational')}</strong>
+            <small>{t('3 phòng tập trực tuyến', 'All studios online')}</small>
+          </div>
+          <CircleCheck />
+        </div>
+
+        {/* Profile info with active role and sign out button */}
+        <div className="profile" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className={`avatar ${currentUser.avatarColor}`}>{currentUser.avatar}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <strong style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentUser.name}
+              </strong>
+              <span className={`role-badge-sidebar ${currentUser.role}`}>
+                {currentUser.role === 'member' ? t('Hội viên', 'Member') : currentUser.role === 'instructor' ? t('HLV', 'Instructor') : t('Quản trị viên', 'Admin')}
+              </span>
+            </div>
+          </div>
+          <button className="logout-button" onClick={handleLogout} title={t('Đăng xuất khỏi hệ thống', 'Sign out of system')}>
+            <LogOut />
+            <span>{t('Đăng xuất', 'Sign out')}</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <header className="topbar">
+          <button className="icon-button menu-button" onClick={() => setMobileNav(true)} aria-label="Open navigation">
+            <Menu />
+          </button>
+
+          <div className="topbar-context">
+            <span className="eyebrow">FITPULSE / {role.toUpperCase()}</span>
+            <span className="live-status">
+              <span className="pulse-dot" /> {t('Hệ thống trực tiếp', 'Live system')}
+            </span>
+          </div>
+
+          <div className="topbar-actions">
+            <button className="icon-button" title={t('Tìm kiếm', 'Search')}><Search /></button>
+            <button className="icon-button" title={t('Lịch', 'Calendar')}><CalendarDays /></button>
+
+            <button
+              className="theme-toggle"
+              onClick={() => setLightTheme(v => !v)}
+              title={lightTheme ? t('Chuyển sang giao diện tối', 'Switch to dark theme') : t('Chuyển sang giao diện sáng', 'Switch to light theme')}
+            >
+              {lightTheme ? <Moon /> : <Sun />}
+              <span>{lightTheme ? t('Sáng', 'Light') : t('Tối', 'Dark')}</span>
+            </button>
+
+            <button
+              className="language-toggle"
+              onClick={() => setLanguage(v => v === 'vi' ? 'en' : 'vi')}
+              title={t('Chuyển đổi ngôn ngữ', 'Switch language')}
+            >
+              <span className={isVi ? 'active' : ''}>VI</span>
+              <span className={isVi ? '' : 'active'}>EN</span>
+            </button>
+
+            <div className={`avatar ${currentUser.avatarColor}`}>{currentUser.avatar}</div>
+          </div>
+        </header>
+
+        <div className="content-wrap">
+          {role === 'member' && currentUser.role === 'member' && (
+            <MemberView
+              sessions={sessions}
+              filter={filter}
+              setFilter={setFilter}
+              activeDay={activeDay}
+              setActiveDay={setActiveDay}
+              onSelect={setSelected}
+              isVi={isVi}
+              user={currentUser}
+            />
+          )}
+
+          {role === 'instructor' && currentUser.role === 'instructor' && (
+            <InstructorView sessions={sessions} showToast={showToast} user={currentUser} isVi={isVi} />
+          )}
+
+          {role === 'admin' && currentUser.role === 'admin' && (
+            <AdminView sessions={sessions} setSessions={setSessions} showToast={showToast} isVi={isVi} />
+          )}
+
+          {role === 'simulation' && currentUser.role === 'admin' && (
+            <SimulationView showToast={showToast} isVi={isVi} />
+          )}
+        </div>
+      </main>
+
+      {selected && <BookingModal session={selected} onClose={() => setSelected(null)} onBook={book} isVi={isVi} />}
+      {toast && <div className="toast"><CircleCheck />{toast}</div>}
+    </div>
+  )
+}
+
+/* ==========================================================================
+   LOGIN VIEW COMPONENT (WITH DEMO CREDENTIALS INFORMATION)
+   ========================================================================== */
+function LoginView({
+  onLogin,
+  lightTheme,
+  setLightTheme,
+  language,
+  setLanguage,
+  isVi,
+  t,
+}: {
+  onLogin: (u: User) => void
+  lightTheme: boolean
+  setLightTheme: React.Dispatch<React.SetStateAction<boolean>>
+  language: 'vi' | 'en'
+  setLanguage: React.Dispatch<React.SetStateAction<'vi' | 'en'>>
+  isVi: boolean
+  t: (vi: string, en: string) => string
+}) {
+  const [email, setEmail] = useState('jordan@fitpulse.com')
+  const [password, setPassword] = useState('123456')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    setTimeout(() => {
+      setLoading(false)
+      const matched = DEMO_CREDENTIALS.find(
+        c => c.email.toLowerCase().trim() === email.toLowerCase().trim() && c.pass === password
+      )
+
+      if (matched) {
+        onLogin(matched.user)
+      } else {
+        setError(t('Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại thông tin bên dưới.', 'Invalid email or password. Please verify the credentials below.'))
+      }
+    }, 400)
+  }
+
+  return (
+    <div className="login-shell">
+      <div className="login-topbar">
+        <button
+          className="theme-toggle"
+          onClick={() => setLightTheme(v => !v)}
+          title={lightTheme ? t('Chuyển giao diện tối', 'Switch dark') : t('Chuyển giao diện sáng', 'Switch light')}
+        >
+          {lightTheme ? <Moon /> : <Sun />}
+          <span>{lightTheme ? t('Sáng', 'Light') : t('Tối', 'Dark')}</span>
+        </button>
+
+        <button
+          className="language-toggle"
+          onClick={() => setLanguage(v => v === 'vi' ? 'en' : 'vi')}
+          title="Switch language"
+        >
+          <span className={isVi ? 'active' : ''}>VI</span>
+          <span className={isVi ? '' : 'active'}>EN</span>
+        </button>
+      </div>
+
+      <div className="login-card">
+        <div className="login-header">
+          <Logo />
+          <h1>{t('Đăng nhập vào FitPulse', 'Sign in to FitPulse')}</h1>
+          <p>
+            {t(
+              'Hệ thống quản lý và điều phối lịch tập tổ hợp Gym, Yoga & Pilates',
+              'Multi-disciplinary Fitness & Wellness Management Platform'
+            )}
+          </p>
+        </div>
+
+        <form className="login-form" onSubmit={handleSubmit}>
+          {error && (
+            <div className="login-error">
+              <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="email">{t('Địa chỉ Email', 'Email Address')}</label>
+            <div className="input-with-icon">
+              <Mail />
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="name@fitpulse.com"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">{t('Mật khẩu', 'Password')}</label>
+            <div className="input-with-icon">
+              <Lock />
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••"
+                required
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="button button-primary full-width"
+            style={{ padding: '12px', marginTop: '6px' }}
+            disabled={loading}
+          >
+            {loading ? t('Đang xác thực...', 'Authenticating...') : t('Đăng nhập vào hệ thống', 'Sign In to System')}
+            {!loading && <ArrowUpRight />}
+          </button>
+        </form>
+
+        {/* Informational block for testing/grading accounts */}
+        <div className="demo-info-card">
+          <div className="demo-info-title">
+            <Info />
+            <span>{t('THÔNG TIN TÀI KHOẢN TRUY CẬP (KIỂM THỬ HỆ THỐNG)', 'ACCESS CREDENTIALS FOR SYSTEM EVALUATION')}</span>
+          </div>
+
+          <div className="demo-accounts-table">
+            <div className="demo-account-row">
+              <div className="demo-role-badge member">
+                <LayoutDashboard style={{ width: 13, height: 13 }} />
+                <span>{t('Hội viên (Member):', 'Member Role:')}</span>
+              </div>
+              <div className="demo-credentials">
+                <code>jordan@fitpulse.com</code> / <code>123456</code>
+              </div>
+            </div>
+
+            <div className="demo-account-row">
+              <div className="demo-role-badge instructor">
+                <Users style={{ width: 13, height: 13 }} />
+                <span>{t('Huấn luyện viên (Coach):', 'Instructor Role:')}</span>
+              </div>
+              <div className="demo-credentials">
+                <code>maya@fitpulse.com</code> / <code>123456</code>
+              </div>
+            </div>
+
+            <div className="demo-account-row">
+              <div className="demo-role-badge admin">
+                <BarChart3 style={{ width: 13, height: 13 }} />
+                <span>{t('Quản trị viên (Admin):', 'Admin Role:')}</span>
+              </div>
+              <div className="demo-credentials">
+                <code>admin@fitpulse.com</code> / <code>123456</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
+  return (
+    <div className="page-header">
+      <div>
+        <div className="eyebrow accent-eyebrow">{eyebrow}</div>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+/* ==========================================================================
+   MEMBER VIEW
+   ========================================================================== */
+function MemberView({
+  sessions, filter, setFilter, activeDay, setActiveDay, onSelect, isVi, user
+}: {
+  sessions: Session[]
+  filter: 'All' | Discipline
+  setFilter: (f: 'All' | Discipline) => void
+  activeDay: string
+  setActiveDay: (d: string) => void
+  onSelect: (s: Session) => void
+  isVi: boolean
+  user: User
+}) {
+  const filtered = sessions.filter(s => (filter === 'All' || s.discipline === filter) && s.day === activeDay)
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const copy = isVi ? {
+    eyebrow: `Chào buổi sáng, ${user.name.split(' ')[0]}`,
+    title: 'Tuần này của bạn, luôn chuyển động.',
+    description: 'Tìm buổi tập tiếp theo và duy trì đà tiến bộ.',
+    card: 'Thẻ hội viên',
+    schedule: 'Lịch studio',
+    week: 'Tuần 14 — 20 tháng 10, 2026',
+    thisWeek: 'Tuần này',
+    all: 'Tất cả bộ môn',
+    gym: 'Phòng gym',
+    yoga: 'Thảm yoga',
+    pilates: 'Pilates reformer',
+    empty: 'Không có buổi tập phù hợp.',
+    streak: 'Bạn đã duy trì chuỗi 4 tuần',
+    goal: 'Thêm hai buổi tập để đạt mục tiêu tháng.',
+    monthly: 'Mục tiêu tháng'
+  } : {
+    eyebrow: `Good morning, ${user.name.split(' ')[0]}`,
+    title: 'Your week, in motion.',
+    description: 'Find your next session and keep your momentum going.',
+    card: 'My membership card',
+    schedule: 'Studio schedule',
+    week: 'Week of October 14 — 20, 2026',
+    thisWeek: 'This week',
+    all: 'All disciplines',
+    gym: 'Open gym',
+    yoga: 'Yoga mat',
+    pilates: 'Pilates reformer',
+    empty: 'No sessions match this filter.',
+    streak: "You're on a 4 week streak",
+    goal: 'Two more sessions to reach your monthly goal.',
+    monthly: 'Monthly goal'
+  }
+
+  return (
+    <>
+      <PageHeader
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        action={<button className="button button-primary"><QrCode /> {copy.card}</button>}
+      />
+      <div className="member-grid">
+        <section className="schedule-panel">
+          <div className="section-heading">
+            <div>
+              <h2>{copy.schedule}</h2>
+              <p>{copy.week}</p>
+            </div>
+            <button className="button button-ghost"><CalendarDays /> {copy.thisWeek}</button>
+          </div>
+
+          <div className="day-tabs">
+            {days.map(day => (
+              <button key={day} className={day === activeDay ? 'selected' : ''} onClick={() => setActiveDay(day)}>
+                <span>{day}</span>
+                <strong>{14 + days.indexOf(day)}</strong>
+              </button>
+            ))}
+          </div>
+
+          <div className="filter-row">
+            {(['All', 'Gym', 'Yoga', 'Pilates'] as const).map(item => (
+              <button
+                key={item}
+                onClick={() => setFilter(item)}
+                className={`filter-pill ${filter === item ? 'selected' : ''}`}
+              >
+                {item === 'All' ? copy.all : item === 'Pilates' ? copy.pilates : item === 'Yoga' ? copy.yoga : copy.gym}
+              </button>
+            ))}
+          </div>
+
+          <div className="session-list">
+            {filtered.map(session => (
+              <SessionRow key={session.id} session={session} onSelect={onSelect} isVi={isVi} />
+            ))}
+            {filtered.length === 0 && <div className="empty-state">{copy.empty}</div>}
+          </div>
+        </section>
+
+        <MembershipCard user={user} isVi={isVi} />
+      </div>
+
+      <div className="insight-strip">
+        <div className="insight-icon"><Flame /></div>
+        <div>
+          <strong>{copy.streak}</strong>
+          <span>{copy.goal}</span>
+        </div>
+        <div className="progress-wrap">
+          <div className="progress-label">
+            <span>{copy.monthly}</span>
+            <strong>6 / 8 sessions</strong>
+          </div>
+          <div className="progress"><i style={{ width: '75%' }} /></div>
+        </div>
+        <ArrowUpRight />
+      </div>
+    </>
+  )
+}
+
+function SessionRow({ session, onSelect, isVi }: { session: Session; onSelect: (s: Session) => void; isVi: boolean }) {
+  const left = session.capacity - session.booked
+  const full = left === 0
+  return (
+    <div className="session-row">
+      <div className={`discipline-icon ${session.color}`}>
+        {session.discipline === 'Gym' ? <Dumbbell /> : session.discipline === 'Yoga' ? <Activity /> : <Target />}
+      </div>
+      <div className="session-main">
+        <div className="session-title">
+          <strong>{session.title}</strong>
+          {full && <Chip tone="red">{isVi ? 'Hết chỗ' : 'Class full'}</Chip>}
+          {!full && left <= 2 && <Chip tone="amber">{left} {isVi ? 'chỗ còn lại' : 'left'}</Chip>}
+        </div>
+        <div className="session-meta">
+          <span><Clock3 /> {session.time} · {session.duration}</span>
+          <span><Users /> {session.instructor}</span>
+          <span><MapPin /> {session.room}</span>
+        </div>
+      </div>
+      <div className="capacity">
+        <div className="capacity-bar">
+          <i style={{ width: `${(session.booked / session.capacity) * 100}%` }} />
+        </div>
+        <span>{session.booked}/{session.capacity} {isVi ? 'đã đặt' : 'booked'}</span>
+      </div>
+      <button
+        className={`button ${full ? 'button-disabled' : 'button-dark'}`}
+        disabled={full}
+        onClick={() => onSelect(session)}
+      >
+        {full ? (isVi ? 'Hết' : 'Full') : (isVi ? 'Đặt ca' : 'Book')} {!full && <ArrowUpRight />}
+      </button>
+    </div>
+  )
+}
+
+function MembershipCard({ user, isVi }: { user: User; isVi: boolean }) {
+  return (
+    <aside className="membership-card">
+      <div className="membership-top">
+        <span>FITPULSE DIGITAL PASS</span>
+        <QrCode />
+      </div>
+      <div className="member-name">
+        <div className={`avatar avatar-large ${user.avatarColor}`}>{user.avatar}</div>
+        <div>
+          <strong>{user.name}</strong>
+          <span>{user.plan}</span>
+        </div>
+      </div>
+      <div className="qr-box">
+        <div className="qr-pattern"><QrCode /></div>
+        <span>{isVi ? 'Quét mã để điểm danh' : 'Scan to check in'}</span>
+      </div>
+      <div className="membership-footer">
+        <div>
+          <span>{isVi ? 'Số buổi còn' : 'Sessions left'}</span>
+          <strong>08</strong>
+        </div>
+        <div>
+          <span>{isVi ? 'Hạn gia hạn' : 'Renews in'}</span>
+          <strong>12 {isVi ? 'ngày' : 'days'}</strong>
+        </div>
+        <Chip tone="green">{isVi ? 'Hoạt động' : 'Active'}</Chip>
+      </div>
+    </aside>
+  )
+}
+
+function BookingModal({ session, onClose, onBook, isVi }: { session: Session; onClose: () => void; onBook: (s: Session) => void; isVi: boolean }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className={`modal-banner ${session.color}`}>
+          <button className="icon-button light" onClick={onClose} aria-label="Close"><X /></button>
+          <div className="modal-discipline">{session.discipline} session</div>
+          <h2>{session.title}</h2>
+        </div>
+        <div className="modal-content">
+          <div className="modal-details">
+            <span><Clock3 /> {session.time} · {session.duration}</span>
+            <span><MapPin /> {session.room}</span>
+            <span><Users /> {session.instructor}</span>
+          </div>
+          <div className="credit-box">
+            <div>
+              <strong>8</strong>
+              <span>{isVi ? 'buổi tập khả dụng' : 'credits remaining'}</span>
+            </div>
+            <span className="credit-arrow">− 1 {isVi ? 'buổi' : 'credit'}</span>
+          </div>
+          <button className="button button-primary full-width" onClick={() => onBook(session)}>
+            <Check /> {isVi ? 'Xác nhận đặt lịch' : 'Confirm booking'}
+          </button>
+          <p className="modal-note">
+            {isVi ? 'Hủy trước 2 tiếng để được hoàn trả buổi tập vào tài khoản.' : 'Cancel up to 2 hours before class to restore your credit.'}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ==========================================================================
+   INSTRUCTOR VIEW
+   ========================================================================== */
+function InstructorView({ sessions, showToast, user, isVi }: { sessions: Session[]; showToast: (m: string) => void; user: User; isVi: boolean }) {
+  const [checked, setChecked] = useState<number[]>([1, 2])
+  const [selectedClass, setSelectedClass] = useState(sessions[0])
+  const roster = [
+    { name: 'Jordan Davis', initials: 'JD', time: 'Yesterday, 18:42', status: checked.includes(1) },
+    { name: 'Sofia Patel', initials: 'SP', time: 'Yesterday, 17:08', status: checked.includes(2) },
+    { name: 'Marcus Lee', initials: 'ML', time: 'Yesterday, 16:54', status: checked.includes(3) },
+    { name: 'Emma Wilson', initials: 'EW', time: 'Yesterday, 16:21', status: checked.includes(4) }
+  ]
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Tuesday, October 15, 2026"
+        title={isVi ? 'Trung tâm điều phối Huấn luyện viên' : 'Coach command center.'}
+        description={isVi ? `Chào buổi sáng, ${user.name}. Đây là lịch giảng dạy hôm nay của bạn.` : `Good morning, ${user.name}. Here's your teaching schedule.`}
+        action={<button className="button button-primary"><Plus /> {isVi ? 'Thêm ghi chú' : 'Add note'}</button>}
+      />
+      <div className="instructor-layout">
+        <section className="class-list-panel">
+          <div className="section-heading">
+            <div>
+              <h2>{isVi ? 'Lịch dạy hôm nay' : "Today's schedule"}</h2>
+              <p>3 {isVi ? 'ca học' : 'classes'} · 21 {isVi ? 'học viên tham gia' : 'total participants'}</p>
+            </div>
+          </div>
+          {sessions.filter(s => s.instructor === 'Maya Chen').map(s => (
+            <button
+              key={s.id}
+              className={`class-card ${selectedClass.id === s.id ? 'active' : ''}`}
+              onClick={() => setSelectedClass(s)}
+            >
+              <div className={`discipline-icon ${s.color}`}>
+                {s.discipline === 'Pilates' ? <Target /> : <Activity />}
+              </div>
+              <div>
+                <strong>{s.title}</strong>
+                <span>{s.time} · {s.room}</span>
+              </div>
+              <div className="class-count">
+                <strong>{s.booked}/{s.capacity}</strong>
+                <span>{isVi ? 'đã đặt' : 'booked'}</span>
+              </div>
+              <ChevronRight />
+            </button>
+          ))}
+          <div className="next-up">
+            <span className="eyebrow">{isVi ? 'CA TIẾP THEO' : 'NEXT UP'}</span>
+            <strong>Core & Control</strong>
+            <p>{isVi ? 'Bắt đầu sau 2h 14m · Reformer Studio' : 'Starts in 2h 14m · Reformer Studio'}</p>
+          </div>
+        </section>
+
+        <section className="roster-panel">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow accent-eyebrow">{isVi ? 'DANH SÁCH HỌC VIÊN' : 'LIVE ROSTER'}</div>
+              <h2>{selectedClass.title}</h2>
+              <p>{selectedClass.time} · {selectedClass.room}</p>
+            </div>
+            <Chip tone="green"><span className="pulse-dot" /> {selectedClass.booked} {isVi ? 'đã đặt' : 'booked'}</Chip>
+          </div>
+
+          <div className="roster-progress">
+            <span>{isVi ? 'Tiến độ điểm danh' : 'Attendance'}</span>
+            <strong>{checked.length} / {roster.length} {isVi ? 'đã có mặt' : 'checked in'}</strong>
+            <div className="progress"><i style={{ width: `${(checked.length / roster.length) * 100}%` }} /></div>
+          </div>
+
+          <div className="roster-list">
+            {roster.map((person, index) => (
+              <div className="roster-row" key={person.name}>
+                <div className={`avatar avatar-${index}`}>{person.initials}</div>
+                <div className="roster-name">
+                  <strong>{person.name}</strong>
+                  <span>{isVi ? 'Đã đặt' : 'Booked'} {person.time}</span>
+                </div>
+                <button
+                  className={`attendance ${person.status ? 'present' : ''}`}
+                  onClick={() => {
+                    setChecked(old => old.includes(index + 1) ? old.filter(i => i !== index + 1) : [...old, index + 1])
+                    showToast(person.status ? `${person.name} ${isVi ? 'chuyển sang vắng mặt' : 'marked as no-show'}.` : `${person.name} ${isVi ? 'đã điểm danh thành công' : 'checked in'}.`)
+                  }}
+                >
+                  {person.status ? <><Check /> {isVi ? 'Đã điểm danh' : 'Checked in'}</> : (isVi ? 'Điểm danh' : 'Check in')}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </>
+  )
+}
+
+/* ==========================================================================
+   ADMIN VIEW
+   ========================================================================== */
+function AdminView({ sessions, setSessions, showToast, isVi }: { sessions: Session[]; setSessions: React.Dispatch<React.SetStateAction<Session[]>>; showToast: (m: string) => void; isVi: boolean }) {
+  const [showForm, setShowForm] = useState(false)
+  const totalBooked = sessions.reduce((sum, s) => sum + s.booked, 0)
+  const totalCapacity = sessions.reduce((sum, s) => sum + s.capacity, 0)
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Operations overview · October 2026"
+        title={isVi ? 'Bảng điều khiển Quản trị Studio' : 'Studio intelligence.'}
+        description={isVi ? 'Cái nhìn toàn diện theo thời gian thực về toàn bộ hệ sinh thái thể thao.' : 'A real-time view of your wellness ecosystem.'}
+        action={<button className="button button-primary" onClick={() => setShowForm(!showForm)}><Plus /> {isVi ? 'Mở ca tập mới' : 'New session'}</button>}
+      />
+
+      {showForm && (
+        <NewSessionForm
+          onCancel={() => setShowForm(false)}
+          onAdd={session => {
+            setSessions(items => [...items, { ...session, id: Date.now(), booked: 0 }])
+            setShowForm(false)
+            showToast(isVi ? 'Đã thêm ca tập mới vào lịch trình studio.' : 'Session added to the schedule.')
+          }}
+          isVi={isVi}
+        />
+      )}
+
+      <div className="kpi-grid">
+        <Kpi icon={<Users />} label={isVi ? 'Hội viên hoạt động' : 'Active members'} value="1,284" change="+12.6%" tone="emerald" />
+        <Kpi icon={<Check />} label={isVi ? 'Lượt check-in hôm nay' : "Today's check-ins"} value="186" change="+8.4%" tone="blue" />
+        <Kpi icon={<BarChart3 />} label={isVi ? 'Tỷ lệ lấp đầy (CUR)' : 'Capacity utilization'} value={`${Math.round((totalBooked / totalCapacity) * 100)}%`} change="+4.2%" tone="violet" />
+        <Kpi icon={<Sparkles />} label={isVi ? 'Doanh thu tháng' : 'Monthly revenue'} value="$48.2k" change="+16.8%" tone="amber" />
+      </div>
+
+      <div className="admin-grid">
+        <OccupancyChart isVi={isVi} />
+        <DistributionChart isVi={isVi} />
+      </div>
+
+      <div className="admin-table-card">
+        <div className="section-heading">
+          <div>
+            <h2>{isVi ? 'Hoạt động hội viên gần đây' : 'Member activity'}</h2>
+            <p>{isVi ? 'Nhật ký gói tập và tần suất check-in gần nhất' : 'Recent membership and attendance activity'}</p>
+          </div>
+          <button className="button button-ghost">{isVi ? 'Xem tất cả' : 'View all'} <ArrowUpRight /></button>
+        </div>
+        <MemberTable isVi={isVi} />
+      </div>
+    </>
+  )
+}
+
+function Kpi({ icon, label, value, change, tone }: { icon: React.ReactNode; label: string; value: string; change: string; tone: string }) {
+  return (
+    <div className="kpi-card">
+      <div className={`kpi-icon ${tone}`}>{icon}</div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small><ArrowUpRight /> {change} <em>vs last month</em></small>
+    </div>
+  )
+}
+
+function OccupancyChart({ isVi }: { isVi: boolean }) {
+  const values = [32, 45, 62, 74, 88, 81, 69, 54, 41, 28]
+  return (
+    <div className="chart-card">
+      <div className="section-heading">
+        <div>
+          <h2>{isVi ? 'Tỷ lệ lấp đầy theo giờ' : 'Studio occupancy'}</h2>
+          <p>{isVi ? 'Mức độ khai thác trung bình các khung giờ' : 'Average utilization by hour'}</p>
+        </div>
+        <Chip tone="green">Live</Chip>
+      </div>
+      <div className="bar-chart">
+        {values.map((value, i) => (
+          <div className="bar-col" key={i}>
+            <div className="bar" style={{ height: `${value}%` }} />
+            <span>{8 + i} {i < 2 ? 'am' : 'pm'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DistributionChart({ isVi }: { isVi: boolean }) {
+  return (
+    <div className="chart-card distribution">
+      <div className="section-heading">
+        <div>
+          <h2>{isVi ? 'Cơ cấu bộ môn' : 'Class mix'}</h2>
+          <p>{isVi ? 'Tỷ lệ đặt lịch theo Gym, Yoga & Pilates' : 'Bookings by discipline'}</p>
+        </div>
+        <MoreHorizontal />
+      </div>
+      <div className="donut-wrap">
+        <div className="donut">
+          <div>
+            <strong>186</strong>
+            <span>{isVi ? 'lượt đặt' : 'bookings'}</span>
+          </div>
+        </div>
+        <div className="legend">
+          <span><i className="dot emerald" /> Gym <b>48%</b></span>
+          <span><i className="dot amber" /> Yoga <b>32%</b></span>
+          <span><i className="dot violet" /> Pilates <b>20%</b></span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MemberTable({ isVi }: { isVi: boolean }) {
+  const rows = [
+    ['Jordan Davis', 'Pro · All access', 'Today, 8:42 AM', 'Active', 'JD'],
+    ['Sofia Patel', 'Unlimited', 'Today, 7:15 AM', 'Active', 'SP'],
+    ['Marcus Lee', '10 session pack', 'Yesterday, 6:30 PM', 'Active', 'ML'],
+    ['Emma Wilson', 'Yoga monthly', 'Oct 13, 11:20 AM', 'Expiring soon', 'EW']
+  ]
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{isVi ? 'Hội viên' : 'Member'}</th>
+            <th>{isVi ? 'Gói thành viên' : 'Plan'}</th>
+            <th>{isVi ? 'Hoạt động gần nhất' : 'Last activity'}</th>
+            <th>{isVi ? 'Trạng thái' : 'Status'}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => (
+            <tr key={row[0]}>
+              <td>
+                <div className="table-person">
+                  <div className="avatar avatar-small">{row[4]}</div>
+                  <strong>{row[0]}</strong>
+                </div>
+              </td>
+              <td>{row[1]}</td>
+              <td>{row[2]}</td>
+              <td><Chip tone={row[3] === 'Active' ? 'green' : 'amber'}>{row[3]}</Chip></td>
+              <td><MoreHorizontal /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function NewSessionForm({ onCancel, onAdd, isVi }: { onCancel: () => void; onAdd: (s: Omit<Session, 'id' | 'booked'>) => void; isVi: boolean }) {
+  const [title, setTitle] = useState('')
+  const [discipline, setDiscipline] = useState<Discipline>('Yoga')
+  const [time, setTime] = useState('18:00')
+  const [error, setError] = useState('')
+
+  return (
+    <div className="new-session">
+      <div>
+        <div className="eyebrow accent-eyebrow">SCHEDULE BUILDER</div>
+        <h2>{isVi ? 'Khởi tạo ca tập mới' : 'Add a new session'}</h2>
+        <p>{isVi ? 'Hệ thống tự động kiểm tra sức chứa phòng và phát hiện xung đột lịch dạy.' : 'Capacity validation and conflict detection run automatically.'}</p>
+      </div>
+      <div className="form-grid">
+        <label>
+          {isVi ? 'Tên ca học' : 'Session title'}
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Sunrise flow" />
+        </label>
+        <label>
+          {isVi ? 'Bộ môn' : 'Discipline'}
+          <select value={discipline} onChange={e => setDiscipline(e.target.value as Discipline)}>
+            <option>Yoga</option>
+            <option>Pilates</option>
+            <option>Gym</option>
+          </select>
+        </label>
+        <label>
+          {isVi ? 'Giờ bắt đầu' : 'Start time'}
+          <input type="time" value={time} onChange={e => setTime(e.target.value)} />
+        </label>
+        <label>
+          {isVi ? 'Phòng tập' : 'Room'}
+          <input defaultValue={discipline === 'Pilates' ? 'Reformer Studio' : 'Zen Room'} />
+        </label>
+      </div>
+      {error && <p className="form-error">{error}</p>}
+      <div className="form-actions">
+        <button className="button button-ghost" onClick={onCancel}>{isVi ? 'Hủy' : 'Cancel'}</button>
+        <button
+          className="button button-primary"
+          onClick={() => {
+            if (!title.trim()) {
+              setError(isVi ? 'Vui lòng nhập tên ca học.' : 'Add a session title to continue.')
+              return
+            }
+            onAdd({
+              title,
+              discipline,
+              instructor: discipline === 'Pilates' ? 'Maya Chen' : 'Alex Morgan',
+              room: discipline === 'Pilates' ? 'Reformer Studio' : discipline === 'Yoga' ? 'Zen Room' : 'Main Floor',
+              time,
+              duration: discipline === 'Gym' ? 'Flexible' : discipline === 'Yoga' ? '60 min' : '50 min',
+              capacity: discipline === 'Pilates' ? 6 : discipline === 'Yoga' ? 20 : 50,
+              color: discipline === 'Pilates' ? 'violet' : discipline === 'Yoga' ? 'amber' : 'emerald',
+              day: 'Tue',
+            })
+          }}
+        >
+          {isVi ? 'Lưu ca tập' : 'Add session'} <ArrowUpRight />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ==========================================================================
+   SIMULATION VIEW
+   ========================================================================== */
+function SimulationView({ showToast, isVi }: { showToast: (m: string) => void; isVi: boolean }) {
+  const [running, setRunning] = useState(false)
+  const [complete, setComplete] = useState(false)
+
+  const run = () => {
+    setRunning(true)
+    window.setTimeout(() => {
+      setRunning(false)
+      setComplete(true)
+      showToast(isVi ? 'Tối ưu hóa hoàn tất. 2 ràng buộc đã được giải quyết.' : 'Re-optimization complete. 2 constraints resolved.')
+    }, 1400)
+  }
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Research sandbox · v1.0"
+        title={isVi ? 'Động cơ Phân bổ Lịch trình Thông minh' : 'The scheduling engine.'}
+        description={isVi ? 'Quan sát cách FitPulse xử lý sức chứa máy, xung đột lịch HLV và tối ưu hóa thời gian thực.' : 'Observe how FitPulse handles capacity, conflicts, and allocation in real time.'}
+        action={<Chip tone="green"><span className="pulse-dot" /> Engine online</Chip>}
+      />
+
+      <div className="simulation-hero">
+        <div className="sim-copy">
+          <div className="sim-icon"><Zap /></div>
+          <div className="eyebrow accent-eyebrow">CAPACITY-CONSTRAINED OPTIMIZER</div>
+          <h2>Every slot, <em>perfectly placed.</em></h2>
+          <p>
+            {isVi
+              ? 'Thuật toán tối ưu hóa của FitPulse liên tục đánh giá nhu cầu, quỹ thời gian của HLV, ràng buộc phòng tập và số lượng máy Pilates để giữ cho studio vận hành ở công suất cao nhất.'
+              : "FitPulse's scheduling engine continuously evaluates demand, instructor availability, room constraints, and equipment inventory to keep every studio moving."}
+          </p>
+          <button className="button button-primary" onClick={run} disabled={running}>
+            {running ? <><Activity /> {isVi ? 'Đang tối ưu hóa...' : 'Re-optimizing…'}</> : <><Play /> {isVi ? 'Chạy thuật toán tái tối ưu' : 'Run automated re-optimization'}</>}
+          </button>
+          {complete && (
+            <div className="optimization-result">
+              <Check /> {isVi ? 'Đã giải quyết 2 xung đột · Đã phân bổ 6 máy reformer' : '2 conflicts resolved · 6 reformer machines allocated'}
+            </div>
+          )}
+        </div>
+
+        <div className="sim-visual">
+          <div className="orbit orbit-one" />
+          <div className="orbit orbit-two" />
+          <div className="sim-core"><Zap /></div>
+          <span className="node node-one">6/6</span>
+          <span className="node node-two">0 conflicts</span>
+          <span className="node node-three"><Clock3 /> 92ms</span>
+        </div>
+      </div>
+
+      <div className="sim-metrics">
+        <div>
+          <span>{isVi ? 'Tổng số ca tập' : 'Total slots'}</span>
+          <strong>48</strong>
+          <small>{isVi ? 'Trên 3 bộ môn' : 'Across 3 disciplines'}</small>
+        </div>
+        <div>
+          <span>{isVi ? 'Tỷ lệ lấp đầy (CUR)' : 'Occupancy rate'}</span>
+          <strong>76.4%</strong>
+          <small className="positive">+4.2% {isVi ? 'tuần này' : 'this week'}</small>
+        </div>
+        <div>
+          <span>{isVi ? 'Xung đột phát hiện' : 'Detected conflicts'}</span>
+          <strong className="positive">0</strong>
+          <small>{isVi ? 'Tất cả ràng buộc thỏa mãn' : 'All constraints satisfied'}</small>
+        </div>
+        <div>
+          <span>{isVi ? 'Độ trễ trung bình' : 'Avg. response latency'}</span>
+          <strong>92ms</strong>
+          <small>{isVi ? 'Mục tiêu < 120ms' : 'Target < 120ms'}</small>
+        </div>
+      </div>
+
+      <div className="algorithm-steps">
+        <div className="section-heading">
+          <div>
+            <h2>{isVi ? 'Quy trình phân bổ giải thuật' : 'Allocation pipeline'}</h2>
+            <p>{isVi ? 'Dấu vết quyết định trực tiếp từ lần chạy tối ưu hóa mới nhất' : 'Live decision trace from the latest optimization run'}</p>
+          </div>
+          <Chip tone="green">Stable</Chip>
+        </div>
+
+        <div className="step-row">
+          <Step
+            number="01"
+            title={isVi ? 'Thu thập tín hiệu nhu cầu' : 'Collect demand signals'}
+            text={isVi ? 'Lượt đặt chỗ, danh sách chờ và thói quen hội viên' : 'Bookings, waitlists, and member preferences'}
+            done
+          />
+          <Step
+            number="02"
+            title={isVi ? 'Áp dụng hệ ràng buộc' : 'Apply constraints'}
+            text={isVi ? 'Phòng tập, lịch HLV và số lượng máy Reformer' : 'Rooms, instructors, and reformer inventory'}
+            done
+          />
+          <Step
+            number="03"
+            title={isVi ? 'Tối ưu hóa phân bổ' : 'Optimize allocation'}
+            text={isVi ? 'Tối đa hóa công suất không để xảy ra trùng lịch' : 'Maximize utilization without conflicts'}
+            done
+          />
+          <Step
+            number="04"
+            title={isVi ? 'Đồng bộ lịch trình' : 'Publish schedule'}
+            text={isVi ? 'Cập nhật tức thì đến cổng hội viên và HLV' : 'Sync changes across member portals'}
+            done
+          />
+        </div>
+      </div>
+    </>
+  )
+}
+
+function Step({ number, title, text, done }: { number: string; title: string; text: string; done?: boolean }) {
+  return (
+    <div className="step">
+      <div className="step-number">{done ? <Check /> : number}</div>
+      <div>
+        <strong>{title}</strong>
+        <span>{text}</span>
+      </div>
+      <CircleCheck className="step-check" />
+    </div>
+  )
+}
