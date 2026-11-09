@@ -400,7 +400,53 @@ function LoginView({
         </button>
       </div>
 
-      <div className="login-card">
+      <div className="login-container">
+        <div className="login-hero">
+          <div className="login-hero-eyebrow">
+            <Sparkles style={{ width: 14, height: 14 }} />
+            <span>FITPULSE STUDIO INTELLIGENCE</span>
+          </div>
+          <h1>
+            {isVi ? (
+              <>Tổ hợp thể thao, <em>chuyển động hoàn mỹ.</em></>
+            ) : (
+              <>Precision wellness, <em>in motion.</em></>
+            )}
+          </h1>
+          <p>
+            {isVi
+              ? 'Nền tảng quản trị và tự động hóa phân bổ lịch trình cho tổ hợp Gym, Yoga và Pilates Reformer với kiểm soát sức chứa thời gian thực.'
+              : 'Intelligent multi-disciplinary studio management platform with automated capacity-constrained scheduling for Gym, Yoga, and Pilates Reformer.'}
+          </p>
+
+          <div className="login-hero-features">
+            <div className="login-feature-item">
+              <div className="login-feature-icon"><Zap /></div>
+              <div className="login-feature-text">
+                <strong>{isVi ? 'Thuật toán cân bằng sức chứa' : 'Capacity-Constrained Optimizer'}</strong>
+                <span>{isVi ? 'Giới hạn nghiêm ngặt 6 máy Reformer & chống trùng lịch HLV' : 'Strict 6 reformer cap & zero instructor double-booking'}</span>
+              </div>
+            </div>
+
+            <div className="login-feature-item">
+              <div className="login-feature-icon"><Users /></div>
+              <div className="login-feature-text">
+                <strong>{isVi ? 'Phân quyền 3 cấp độ (RBAC)' : '3-Tier Role-Based Access Control'}</strong>
+                <span>{isVi ? 'Giao diện chuyên biệt cho Hội viên, Huấn luyện viên & Quản trị viên' : 'Tailored portals for Members, Coaches, and Studio Directors'}</span>
+              </div>
+            </div>
+
+            <div className="login-feature-item">
+              <div className="login-feature-icon"><QrCode /></div>
+              <div className="login-feature-text">
+                <strong>{isVi ? 'Thẻ hội viên số & Điểm danh 1 chạm' : 'Digital Pass & 1-Click Check-in'}</strong>
+                <span>{isVi ? 'Điểm danh tức thì và cập nhật số buổi tập theo thời gian thực' : 'Real-time credit tracking and instant attendance roster'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="login-card">
         <div className="login-header">
           <Logo />
           <h1>{t('Đăng nhập vào FitPulse', 'Sign in to FitPulse')}</h1>
@@ -502,7 +548,8 @@ function LoginView({
         </div>
       </div>
     </div>
-  )
+  </div>
+)
 }
 
 function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {

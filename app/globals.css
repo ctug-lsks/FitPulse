@@ -60,34 +60,158 @@ button:disabled { cursor: not-allowed; }
    ========================================================================== */
 .login-shell {
   min-height: 100vh;
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 18px;
-  background: radial-gradient(circle at 50% 20%, rgba(73, 136, 111, .18), transparent 45%), var(--bg);
-  position: relative;
+  padding: clamp(24px, 4vw, 50px);
+  background-color: var(--bg);
+  background-image: 
+    linear-gradient(98deg, rgba(11, 17, 16, 0.78) 0%, rgba(11, 17, 16, 0.86) 45%, rgba(11, 17, 16, 0.96) 100%),
+    url('https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=2000&q=80');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+.theme-light .login-shell {
+  background-image: 
+    linear-gradient(98deg, rgba(245, 247, 243, 0.78) 0%, rgba(245, 247, 243, 0.88) 45%, rgba(245, 247, 243, 0.97) 100%),
+    url('https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=2000&q=80');
 }
 .login-topbar {
-  position: absolute;
-  top: 24px;
-  right: 24px;
+  position: fixed;
+  top: 22px;
+  right: 28px;
   display: flex;
   gap: 10px;
   align-items: center;
+  z-index: 50;
+}
+.login-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.15fr minmax(360px, 460px);
+  gap: clamp(30px, 5vw, 70px);
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  padding: 40px 0;
+}
+.login-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 580px;
+}
+.login-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+.theme-light .login-hero-eyebrow {
+  color: #4f7416;
+}
+.login-hero h1 {
+  margin: 0;
+  font-size: clamp(34px, 3.8vw, 50px);
+  line-height: 1.08;
+  letter-spacing: -2px;
+  font-weight: 600;
+  color: var(--text);
+}
+.login-hero h1 em {
+  font-style: normal;
+  color: var(--lime);
+}
+.theme-light .login-hero h1 em {
+  color: #4f7416;
+}
+.login-hero p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.login-hero-features {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 10px;
+}
+.login-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 15px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+.theme-light .login-feature-item {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(30, 55, 42, 0.12);
+  box-shadow: 0 4px 15px rgba(42, 76, 58, 0.04);
+}
+.login-feature-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: rgba(198, 243, 107, 0.12);
+  color: var(--lime);
+  flex-shrink: 0;
+}
+.theme-light .login-feature-icon {
+  background: rgba(85, 121, 28, 0.12);
+  color: #4f7416;
+}
+.login-feature-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.login-feature-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.login-feature-text span {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
 }
 .login-card {
-  width: min(480px, 100%);
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(17, 26, 24, .88);
   box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
-  padding: 36px 32px;
-  backdrop-filter: blur(12px);
+  padding: 34px 30px;
+  backdrop-filter: blur(14px);
 }
 .theme-light .login-card {
   background: #ffffff;
   box-shadow: 0 20px 50px rgba(42, 76, 58, .12);
+}
+@media (max-width: 960px) {
+  .login-container {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+  .login-hero {
+    display: none;
+  }
 }
 .login-header {
   text-align: center;
