@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react'
 import {
-  Activity, ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, ChevronLeft, ChevronDown, CircleCheck, Clock3,
+  Activity, ArrowUpRight, ArrowLeft, BarChart3, CalendarDays, Check, ChevronRight, ChevronLeft, ChevronDown, CircleCheck, Clock3,
   Dumbbell, Flame, Grid2X2, LayoutDashboard, MapPin, Menu, MoreHorizontal, Play, Plus,
   QrCode, Search, Settings2, Sparkles, Sun, Moon, Target, Users, X, Zap,
   LogOut, Lock, Mail, AlertCircle, Info, Trash2, CalendarCheck, ShieldCheck, CreditCard, Award, UserCheck, RefreshCw,
@@ -351,6 +351,7 @@ export default function FitPulseApp() {
   const [creditsLeft, setCreditsLeft] = useState(8)
   const [filter, setFilter] = useState<'All' | Discipline>('All')
   const [selected, setSelected] = useState<Session | null>(null)
+  const [selectedClassDetail, setSelectedClassDetail] = useState<Session | null>(null)
   const [toast, setToast] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
   const [activeDay, setActiveDay] = useState(getTodayDayKey)
@@ -473,6 +474,7 @@ export default function FitPulseApp() {
     setRole('member')
     setMemberTab('schedule')
     setInstructorTab('schedule')
+    setSelectedClassDetail(null)
     showToast(isVi ? 'Đã đăng xuất thành công' : 'Signed out successfully')
   }
 
@@ -636,7 +638,7 @@ export default function FitPulseApp() {
               <button
                 key={item.id}
                 className={`side-link ${isActive ? 'active' : ''}`}
-                onClick={() => { setMemberTab(item.id as MemberTab); setMobileNav(false) }}
+                onClick={() => { setMemberTab(item.id as MemberTab); setSelectedClassDetail(null); setMobileNav(false) }}
               >
                 <Icon />
                 <span>{item.label}</span>
@@ -691,7 +693,9 @@ export default function FitPulseApp() {
           <div className="topbar-context">
             <span className="eyebrow">
               {currentUser.role === 'member'
-                ? `FITPULSE / ${memberTab === 'schedule' ? t('LỊCH STUDIO', 'STUDIO SCHEDULE') : memberTab === 'my-schedule' ? t('LỊCH CỦA BẠN', 'MY SCHEDULE') : t('HỒ SƠ HỘI VIÊN', 'MEMBER PROFILE')}`
+                ? selectedClassDetail
+                  ? `FITPULSE / ${t('CHI TIẾT LỚP HỌC & HLV', 'CLASS & INSTRUCTOR DETAIL')}`
+                  : `FITPULSE / ${memberTab === 'schedule' ? t('LỊCH STUDIO', 'STUDIO SCHEDULE') : memberTab === 'my-schedule' ? t('LỊCH CỦA BẠN', 'MY SCHEDULE') : t('HỒ SƠ HỘI VIÊN', 'MEMBER PROFILE')}`
                 : currentUser.role === 'instructor'
                 ? `FITPULSE / ${instructorTab === 'schedule' ? t('LỊCH GIẢNG DẠY', 'INSTRUCTOR SCHEDULE') : t('HỒ SƠ CHUYÊN MÔN', 'COACH PROFILE')}`
                 : `FITPULSE / ${t('QUẢN TRỊ VIÊN', 'ADMIN')}`}
@@ -749,6 +753,7 @@ export default function FitPulseApp() {
                     <button
                       className="user-dropdown-item"
                       onClick={() => {
+                        setSelectedClassDetail(null)
                         setMemberTab('profile')
                         setUserMenuOpen(false)
                       }}
@@ -811,47 +816,74 @@ export default function FitPulseApp() {
         <div className="content-wrap">
           {currentUser.role === 'member' && (
             <>
-              {memberTab === 'schedule' && (
-                <MemberView
+              {selectedClassDetail ? (
+                <ClassDetailView
+                  session={selectedClassDetail}
                   sessions={sessions}
-                  filter={filter}
-                  setFilter={setFilter}
-                  activeDay={activeDay}
-                  setActiveDay={setActiveDay}
+                  bookedSessions={bookedSessions}
+                  creditsLeft={creditsLeft}
+                  isVi={isVi}
+                  onBack={() => setSelectedClassDetail(null)}
                   onSelect={setSelected}
                   onJoinWaitlist={joinWaitlist}
                   onCancelBooking={cancelBooking}
                   onLeaveWaitlist={leaveWaitlist}
-                  bookedSessions={bookedSessions}
-                  isVi={isVi}
-                  user={currentUser}
-                  creditsLeft={creditsLeft}
-                  onGoToProfile={() => setMemberTab('profile')}
-                  onGoToMySchedule={() => setMemberTab('my-schedule')}
-                />
-              )}
-
-              {memberTab === 'my-schedule' && (
-                <MyScheduleView
-                  bookedSessions={bookedSessions}
-                  onCancel={cancelBooking}
-                  onLeaveWaitlist={leaveWaitlist}
-                  onGoToExplore={() => setMemberTab('schedule')}
-                  isVi={isVi}
                   showToast={showToast}
                 />
-              )}
+              ) : (
+                <>
+                  {memberTab === 'schedule' && (
+                    <MemberView
+                      sessions={sessions}
+                      filter={filter}
+                      setFilter={setFilter}
+                      activeDay={activeDay}
+                      setActiveDay={setActiveDay}
+                      onSelect={setSelected}
+                      onJoinWaitlist={joinWaitlist}
+                      onCancelBooking={cancelBooking}
+                      onLeaveWaitlist={leaveWaitlist}
+                      onViewDetail={setSelectedClassDetail}
+                      bookedSessions={bookedSessions}
+                      isVi={isVi}
+                      user={currentUser}
+                      creditsLeft={creditsLeft}
+                      onGoToProfile={() => setMemberTab('profile')}
+                      onGoToMySchedule={() => setMemberTab('my-schedule')}
+                    />
+                  )}
 
-              {memberTab === 'profile' && (
-                <MemberProfileView
-                  user={currentUser}
-                  creditsLeft={creditsLeft}
-                  bookedSessions={bookedSessions}
-                  isVi={isVi}
-                  onGoToSchedule={() => setMemberTab('schedule')}
-                  showToast={showToast}
-                  onUpdateUser={handleUpdateUser}
-                />
+                  {memberTab === 'my-schedule' && (
+                    <MyScheduleView
+                      bookedSessions={bookedSessions}
+                      sessions={sessions}
+                      onCancel={cancelBooking}
+                      onLeaveWaitlist={leaveWaitlist}
+                      onGoToExplore={() => {
+                        setSelectedClassDetail(null)
+                        setMemberTab('schedule')
+                      }}
+                      onViewDetail={setSelectedClassDetail}
+                      isVi={isVi}
+                      showToast={showToast}
+                    />
+                  )}
+
+                  {memberTab === 'profile' && (
+                    <MemberProfileView
+                      user={currentUser}
+                      creditsLeft={creditsLeft}
+                      bookedSessions={bookedSessions}
+                      isVi={isVi}
+                      onGoToSchedule={() => {
+                        setSelectedClassDetail(null)
+                        setMemberTab('schedule')
+                      }}
+                      showToast={showToast}
+                      onUpdateUser={handleUpdateUser}
+                    />
+                  )}
+                </>
               )}
             </>
           )}
@@ -1157,6 +1189,7 @@ function MemberView({
   onJoinWaitlist,
   onCancelBooking,
   onLeaveWaitlist,
+  onViewDetail,
   bookedSessions,
   isVi,
   user,
@@ -1173,6 +1206,7 @@ function MemberView({
   onJoinWaitlist: (s: Session) => void
   onCancelBooking?: (bookedId: number, sessionId: number, title: string) => void
   onLeaveWaitlist?: (bookedId: number, title: string) => void
+  onViewDetail?: (s: Session) => void
   bookedSessions: BookedSession[]
   isVi: boolean
   user: User
@@ -1485,6 +1519,7 @@ function MemberView({
                   onJoinWaitlist={onJoinWaitlist}
                   onCancelBooking={onCancelBooking && bookedItem ? () => onCancelBooking(bookedItem.id, session.id, getSessionTitle(session, isVi)) : undefined}
                   onLeaveWaitlist={onLeaveWaitlist && bookedItem ? () => onLeaveWaitlist(bookedItem.id, getSessionTitle(session, isVi)) : undefined}
+                  onViewDetail={onViewDetail}
                   isVi={isVi}
                   isBooked={isBooked}
                   isWaitlisted={isWaitlisted}
@@ -1540,6 +1575,7 @@ function SessionRow({
   onJoinWaitlist,
   onCancelBooking,
   onLeaveWaitlist,
+  onViewDetail,
   isVi,
   isBooked,
   isWaitlisted,
@@ -1549,6 +1585,7 @@ function SessionRow({
   onJoinWaitlist: (s: Session) => void
   onCancelBooking?: () => void
   onLeaveWaitlist?: () => void
+  onViewDetail?: (s: Session) => void
   isVi: boolean
   isBooked: boolean
   isWaitlisted: boolean
@@ -1557,7 +1594,11 @@ function SessionRow({
   const full = left <= 0
 
   return (
-    <div className="session-row">
+    <div
+      className={`session-row ${onViewDetail ? 'session-row-clickable' : ''}`}
+      onClick={() => onViewDetail?.(session)}
+      title={isVi ? 'Bấm để xem chi tiết lớp học & thông tin giảng viên' : 'Click to view class & instructor details'}
+    >
       <div className={`discipline-icon ${session.color}`}>
         {session.discipline === 'Gym' ? <Dumbbell /> : session.discipline === 'Yoga' ? <Activity /> : <Target />}
       </div>
@@ -1586,7 +1627,10 @@ function SessionRow({
         <button
           type="button"
           className="button button-booked-action"
-          onClick={onCancelBooking}
+          onClick={(e) => {
+            e.stopPropagation()
+            onCancelBooking?.()
+          }}
           title={isVi ? 'Bấm để hủy ca tập này' : 'Click to cancel booking'}
         >
           <span className="btn-label-normal">{isVi ? 'Đã đặt' : 'Booked'}</span>
@@ -1596,7 +1640,10 @@ function SessionRow({
         <button
           type="button"
           className="button button-waitlisted-action"
-          onClick={onLeaveWaitlist}
+          onClick={(e) => {
+            e.stopPropagation()
+            onLeaveWaitlist?.()
+          }}
           title={isVi ? 'Bấm để rời danh sách hàng chờ' : 'Click to leave waitlist'}
         >
           <span className="btn-label-normal">{isVi ? 'Hàng chờ #1' : 'Waitlist #1'}</span>
@@ -1605,7 +1652,10 @@ function SessionRow({
       ) : full ? (
         <button
           className="button button-waitlist"
-          onClick={() => onJoinWaitlist(session)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onJoinWaitlist(session)
+          }}
           title={isVi ? 'Đăng ký vào danh sách chờ' : 'Join waitlist queue'}
         >
           {isVi ? 'Hàng chờ' : 'Waitlist'} <ArrowUpRight />
@@ -1613,10 +1663,19 @@ function SessionRow({
       ) : (
         <button
           className="button button-dark"
-          onClick={() => onSelect(session)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect(session)
+          }}
         >
           {isVi ? 'Đặt ca' : 'Book'} <ArrowUpRight />
         </button>
+      )}
+
+      {onViewDetail && (
+        <span className="session-hover-hint">
+          <ChevronRight style={{ width: 14, height: 14 }} />
+        </span>
       )}
     </div>
   )
@@ -1694,16 +1753,20 @@ function BookingModal({ session, onClose, onBook, isVi, creditsLeft }: { session
    ========================================================================== */
 function MyScheduleView({
   bookedSessions,
+  sessions,
   onCancel,
   onLeaveWaitlist,
   onGoToExplore,
+  onViewDetail,
   isVi,
   showToast,
 }: {
   bookedSessions: BookedSession[]
+  sessions?: Session[]
   onCancel: (bookedId: number, sessionId: number, title: string) => void
   onLeaveWaitlist: (bookedId: number, title: string) => void
   onGoToExplore: () => void
+  onViewDetail?: (s: Session) => void
   isVi: boolean
   showToast: (msg: string) => void
 }) {
@@ -1768,57 +1831,73 @@ function MyScheduleView({
           </div>
         ) : (
           <div className="my-schedule-list">
-            {bookedSessions.map(item => (
-              <div className="booked-card" key={item.id}>
-                <div className="booked-card-left">
-                  <div className={`discipline-icon ${item.color}`}>
-                    {item.discipline === 'Gym' ? <Dumbbell /> : item.discipline === 'Yoga' ? <Activity /> : <Target />}
-                  </div>
-                  <div className="booked-card-main">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong>{getSessionTitle(item, isVi)}</strong>
-                      {item.status === 'waitlist' ? (
-                        <Chip tone="amber">
-                          <Clock3 style={{ width: 10, height: 10 }} /> {isVi ? 'Hàng chờ #1' : 'Waitlist #1'}
-                        </Chip>
-                      ) : (
-                        <Chip tone="green">{isVi ? 'Đã xác nhận' : 'Confirmed'}</Chip>
-                      )}
+            {bookedSessions.map(item => {
+              const matchedSession = sessions?.find(s => s.id === item.sessionId)
+              return (
+                <div
+                  className={`booked-card ${matchedSession && onViewDetail ? 'session-row-clickable' : ''}`}
+                  key={item.id}
+                  onClick={() => {
+                    if (matchedSession && onViewDetail) onViewDetail(matchedSession)
+                  }}
+                  title={matchedSession && onViewDetail ? (isVi ? 'Bấm để xem chi tiết lớp học & giảng viên' : 'Click to view class & instructor details') : undefined}
+                >
+                  <div className="booked-card-left">
+                    <div className={`discipline-icon ${item.color}`}>
+                      {item.discipline === 'Gym' ? <Dumbbell /> : item.discipline === 'Yoga' ? <Activity /> : <Target />}
                     </div>
-                    <div className="booked-card-meta">
-                      <span><CalendarDays style={{ width: 12, height: 12 }} /> {formatDay(item.day, isVi)}, {item.date}</span>
-                      <span><Clock3 style={{ width: 12, height: 12 }} /> {item.time}</span>
-                      <span><Users style={{ width: 12, height: 12 }} /> {formatInstructor(item.instructor, isVi)}</span>
-                      <span><MapPin style={{ width: 12, height: 12 }} /> {formatRoom(item.room, isVi)}</span>
+                    <div className="booked-card-main">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <strong>{getSessionTitle(item, isVi)}</strong>
+                        {item.status === 'waitlist' ? (
+                          <Chip tone="amber">
+                            <Clock3 style={{ width: 10, height: 10 }} /> {isVi ? 'Hàng chờ #1' : 'Waitlist #1'}
+                          </Chip>
+                        ) : (
+                          <Chip tone="green">{isVi ? 'Đã xác nhận' : 'Confirmed'}</Chip>
+                        )}
+                      </div>
+                      <div className="booked-card-meta">
+                        <span><CalendarDays style={{ width: 12, height: 12 }} /> {formatDay(item.day, isVi)}, {item.date}</span>
+                        <span><Clock3 style={{ width: 12, height: 12 }} /> {item.time}</span>
+                        <span><Users style={{ width: 12, height: 12 }} /> {formatInstructor(item.instructor, isVi)}</span>
+                        <span><MapPin style={{ width: 12, height: 12 }} /> {formatRoom(item.room, isVi)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="booked-card-actions">
-                  {item.status === 'waitlist' ? (
-                    <button
-                      className="button button-ghost"
-                      onClick={() => onLeaveWaitlist(item.id, getSessionTitle(item, isVi))}
-                      style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
-                      title={isVi ? 'Rời danh sách chờ' : 'Leave waitlist queue'}
-                    >
-                      <Trash2 style={{ width: 13, height: 13 }} />
-                      <span>{isVi ? 'Rời hàng chờ' : 'Leave waitlist'}</span>
-                    </button>
-                  ) : (
-                    <button
-                      className="button button-ghost"
-                      onClick={() => onCancel(item.id, item.sessionId, getSessionTitle(item, isVi))}
-                      style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
-                      title={isVi ? 'Hủy ca và hoàn trả buổi tập' : 'Cancel booking and refund credit'}
-                    >
-                      <Trash2 style={{ width: 13, height: 13 }} />
-                      <span>{isVi ? 'Hủy ca' : 'Cancel'}</span>
-                    </button>
-                  )}
+                  <div className="booked-card-actions">
+                    {item.status === 'waitlist' ? (
+                      <button
+                        className="button button-ghost"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onLeaveWaitlist(item.id, getSessionTitle(item, isVi))
+                        }}
+                        style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
+                        title={isVi ? 'Rời danh sách chờ' : 'Leave waitlist queue'}
+                      >
+                        <Trash2 style={{ width: 13, height: 13 }} />
+                        <span>{isVi ? 'Rời hàng chờ' : 'Leave waitlist'}</span>
+                      </button>
+                    ) : (
+                      <button
+                        className="button button-ghost"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onCancel(item.id, item.sessionId, getSessionTitle(item, isVi))
+                        }}
+                        style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
+                        title={isVi ? 'Hủy ca và hoàn trả buổi tập' : 'Cancel booking and refund credit'}
+                      >
+                        <Trash2 style={{ width: 13, height: 13 }} />
+                        <span>{isVi ? 'Hủy ca' : 'Cancel'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -2151,6 +2230,813 @@ function MemberProfileView({
         </div>
       )}
     </>
+  )
+}
+
+
+/* ==========================================================================
+   CLASS DETAIL & LEAD INSTRUCTOR DOSSIER COMPONENT
+   ========================================================================== */
+export interface InstructorDetailProfile {
+  name: string
+  avatar: string
+  avatarColor: string
+  title: { vi: string; en: string }
+  experience: { vi: string; en: string }
+  rating: number
+  reviewCount: number
+  teachingHours: string
+  bio: { vi: string; en: string }
+  certifications: string[]
+  specialties: { vi: string[]; en: string[] }
+  phone: string
+  email: string
+  quote: { vi: string; en: string }
+}
+
+export const INSTRUCTOR_PROFILES: Record<string, InstructorDetailProfile> = {
+  'Maya Chen': {
+    name: 'Maya Chen',
+    avatar: 'MC',
+    avatarColor: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+    title: {
+      vi: 'Chuyên gia Huấn luyện Pilates Cổ điển & Reformer',
+      en: 'Senior Classical & Reformer Pilates Specialist',
+    },
+    experience: {
+      vi: '8+ năm kinh nghiệm · Cựu vũ công múa cổ điển',
+      en: '8+ years experience · Former Classical Ballerina',
+    },
+    rating: 4.98,
+    reviewCount: 218,
+    teachingHours: '1,450+ giờ',
+    bio: {
+      vi: 'Maya Chen tốt nghiệp Học viện Nghệ thuật Chuyển động và sở hữu chứng chỉ PMA Certified Pilates Teacher cùng Balanced Body Master Trainer. Phong cách huấn luyện của Maya tập trung vào độ chính xác giải phẫu, kiểm soát hơi thở sâu và tái định hình chuỗi cơ lõi sâu nhằm phục hồi tư thế, triệt tiêu đau mỏi cột sống và đánh thức năng lượng dẻo dai bên trong.',
+      en: 'Maya Chen is a PMA Certified Pilates Teacher and Balanced Body Master Trainer. Her methodology blends anatomical precision, diaphragmatic control, and kinetic chain realignment to sculpt elongated core strength, eliminate spinal compression, and restore vibrant balance.',
+    },
+    certifications: [
+      'PMA Certified Pilates Teacher',
+      'Balanced Body Master Trainer',
+      'Anatomy Trains Kinetic Chains Specialist',
+      'Pre & Post-Natal Reformer Conditioning',
+    ],
+    specialties: {
+      vi: ['Reformer Căn bản & Nâng cao', 'Cơ lõi & Kiểm soát Trọng tâm', 'Nắn chỉnh Cột sống & Phục hồi', 'Pilates Bàn nhảy Đốt mỡ'],
+      en: ['Reformer Foundations & Mastery', 'Deep Core & Kinetic Stability', 'Spine Realignment & Posture Rehab', 'Athletic Jumpboard Burn'],
+    },
+    phone: '0912 345 678',
+    email: 'maya@fitpulse.com',
+    quote: {
+      vi: '"Cơ thể bạn là ngôi đền duy nhất bạn sở hữu suốt cuộc đời. Hãy chăm sóc từng khớp xương bằng sự tôn trọng và chính xác."',
+      en: '"Your body is the only temple you dwell in for life. Treat every joint and breath with absolute precision and reverence."',
+    },
+  },
+  'Noah Williams': {
+    name: 'Noah Williams',
+    avatar: 'NW',
+    avatarColor: 'linear-gradient(135deg, #d97706, #f59e0b)',
+    title: {
+      vi: 'Bậc thầy Yoga Vinyasa, Yin Yoga & Trị liệu Chuông xoay',
+      en: 'Master Yoga Instructor & Sound Healing Practitioner',
+    },
+    experience: {
+      vi: '10+ năm tu học & đào tạo tại Rishikesh (Ấn Độ) & Nepal',
+      en: '10+ years practice & study in Rishikesh & Kathmandu',
+    },
+    rating: 4.96,
+    reviewCount: 185,
+    teachingHours: '2,100+ giờ',
+    bio: {
+      vi: 'Noah Williams đạt chứng chỉ cao cấp Yoga Alliance E-RYT 500 và là chuyên gia trị liệu chuông xoay Tây Tạng được đào tạo trực tiếp tại thung lũng Kathmandu (Nepal). Lớp học của Noah dẫn dắt học viên qua những chuỗi asana nhịp nhàng kết hợp với tần số rung động của chuông xoay Tây Tạng, giúp thanh lọc tâm trí, giải tỏa căng thẳng hệ thần kinh thực vật và mở rộng biên độ chuyển động tự nhiên.',
+      en: 'Noah Williams holds the prestigious Yoga Alliance E-RYT 500 credential and completed Tibetan Singing Bowl therapy masteries in Kathmandu. His classes guide students through fluid breath-driven Vinyasa sequences synchronized with healing acoustic resonances, releasing neural fatigue and awakening profound inner peace.',
+    },
+    certifications: [
+      'Yoga Alliance E-RYT 500 (Master Trainer)',
+      'YACEP Continuing Education Provider',
+      'Tibetan Sound Bowl Therapy Master (Nepal)',
+      'Advanced Pranayama & Mindfulness Guide',
+    ],
+    specialties: {
+      vi: ['Yoga Vinyasa Bình minh Năng lượng', 'Yin Yoga Phục hồi Thân tâm', 'Chuông xoay Tây Tạng & Thiền định', 'Giải phóng Khớp Hông & Lưng'],
+      en: ['Sunrise Vinyasa Flow', 'Deep Restorative Yin Yoga', 'Tibetan Sound Bath & Meditation', 'Hip Mobility & Spine Decompression'],
+    },
+    phone: '0938 123 789',
+    email: 'noah@fitpulse.com',
+    quote: {
+      vi: '"Yoga không phải là chạm vào ngón chân, mà là những gì bạn học được trên đường đi xuống."',
+      en: '"Yoga is not about touching your toes, it is about what you learn on the journey on the way down."',
+    },
+  },
+  'Alex Morgan': {
+    name: 'Alex Morgan',
+    avatar: 'AM',
+    avatarColor: 'linear-gradient(135deg, #059669, #10b981)',
+    title: {
+      vi: 'Chuyên gia Huấn luyện Sức mạnh Chức năng & Thể lực HIIT',
+      en: 'Head Strength, Conditioning & Functional Performance Coach',
+    },
+    experience: {
+      vi: '7+ năm huấn luyện vận động viên thể thao & Hội viên cao cấp',
+      en: '7+ years coaching competitive athletes & executive trainees',
+    },
+    rating: 4.95,
+    reviewCount: 172,
+    teachingHours: '1,680+ giờ',
+    bio: {
+      vi: 'Alex Morgan sở hữu chứng chỉ quốc tế CSCS (Certified Strength and Conditioning Specialist) từ Hiệp hội Sức mạnh Quốc gia Hoa Kỳ (NSCA). Với nền tảng khoa học vận động cơ sinh học, Alex thiết kế các bài tập kháng lực compound, cử tạ kỹ thuật và mạch HIIT cường độ cao giúp tối ưu hóa hệ trao đổi chất, tăng mật độ cơ bắp nạc và nâng cao chỉ số thể lực toàn diện một cách an toàn.',
+      en: 'Alex Morgan holds the gold-standard NSCA-CSCS credential with an academic foundation in biomechanics and athletic conditioning. Alex engineers progressive compound lifting programs and metabolic circuits that supercharge VO2 max, optimize fat oxidation, and forge functional strength.',
+    },
+    certifications: [
+      'NSCA Certified Strength & Conditioning Specialist (CSCS)',
+      'USA Weightlifting Level 2 Coach (USAW)',
+      'EXOS Performance Specialist',
+      'Precision Nutrition Level 1 Coach',
+    ],
+    specialties: {
+      vi: ['Tập Gym Kháng lực & HIIT Chuyển hóa', 'Phát triển Cơ bắp Thân trên/Thân dưới', 'Cử tạ Sức mạnh & Đòn tạ Compound', 'Tăng tốc Chuyển hóa & Đốt mỡ'],
+      en: ['Functional HIIT & Metabolic Conditioning', 'Upper/Lower Hypertrophy Mastery', 'Olympic Weightlifting & Compound Power', 'Metabolic Conditioning & Conditioning'],
+    },
+    phone: '0903 567 890',
+    email: 'alex@fitpulse.com',
+    quote: {
+      vi: '"Kỷ luật và kỹ thuật chuẩn xác luôn đi trước mức tạ. Sức mạnh bền vững đến từ nền tảng vững vàng."',
+      en: '"Discipline and biomechanical form always precede load. Sustainable strength is built from flawless fundamentals."',
+    },
+  },
+  'Elena Rostova': {
+    name: 'Elena Rostova',
+    avatar: 'ER',
+    avatarColor: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    title: {
+      vi: 'Chuyên gia STOTT Pilates & Phục hồi Vận động Thể thao',
+      en: 'Senior STOTT PILATES & Sports Rehabilitation Specialist',
+    },
+    experience: {
+      vi: '6+ năm kinh nghiệm đào tạo Pilates chuyên sâu tại Châu Âu',
+      en: '6+ years international Pilates & kinetic rehab instruction',
+    },
+    rating: 4.97,
+    reviewCount: 139,
+    teachingHours: '1,220+ giờ',
+    bio: {
+      vi: 'Elena Rostova được đào tạo bài bản theo trường phái STOTT PILATES quốc tế với chuyên môn phục hồi chấn thương cột sống và cân bằng cơ học vận động. Các lớp học của cô kết hợp kỹ thuật lò xo kháng lực tinh tế với các động tác kích hoạt cơ ổn định sâu, giúp giải phóng áp lực thắt lưng, định hình đường cong săn chắc và tối ưu hóa năng lượng cơ thể.',
+      en: 'Elena Rostova is certified under the world-renowned STOTT PILATES curriculum, specializing in spinal rehabilitation and kinetic alignment. Her classes combine spring resistance mechanics with neuromuscular stabilizer activation to relieve postural compression and sculpt athletic tone.',
+    },
+    certifications: [
+      'STOTT PILATES Full Certified Instructor',
+      'Fascial Movement Foundation Specialist',
+      'Spine & Joint Post-Rehab Conditioning',
+      'Athletic Reformer Jumpboard Specialist',
+    ],
+    specialties: {
+      vi: ['Pilates Nắn chỉnh Cột sống & Tư thế', 'Pilates Bàn nhảy Đốt mỡ Cardio', 'Kỹ thuật Cơ chế Máy Reformer', 'Siết cơ Thon gọn Điêu khắc'],
+      en: ['Spine Alignment & Posture Rehab', 'Dynamic Jumpboard Cardio', 'Reformer Biomechanics & Form', 'Sculpt & Long-line Definition'],
+    },
+    phone: '0978 654 321',
+    email: 'elena@fitpulse.com',
+    quote: {
+      vi: '"Chuyển động chính xác chữa lành cơ thể. Khi cơ lõi vững vàng, mọi bước đi đều trở nên thanh thoát."',
+      en: '"Precise movement heals the body. When your core is centered, every step in life moves with effortless grace."',
+    },
+  },
+  'Open access': {
+    name: 'Sàn Gym Tự do',
+    avatar: 'FP',
+    avatarColor: 'linear-gradient(135deg, #10b981, #059669)',
+    title: {
+      vi: 'Đội ngũ Huấn luyện viên Trực sàn & Giám sát An toàn FitPulse',
+      en: 'Fitness Floor Specialists & Safety Supervisory Team',
+    },
+    experience: {
+      vi: 'Luôn túc trực 100% thời gian hoạt động của Studio',
+      en: 'Stationed 100% of studio operating hours',
+    },
+    rating: 4.92,
+    reviewCount: 345,
+    teachingHours: 'Túc trực toàn thời gian',
+    bio: {
+      vi: 'Khu vực Sàn Gym Tự do FitPulse được đầu tư toàn bộ trang thiết bị Technogym và Eleiko tiêu chuẩn thi đấu Olympic. Đội ngũ Huấn luyện viên trực sàn luôn sẵn sàng hỗ trợ bạn hiệu chỉnh máy tập, hỗ trợ đỡ tạ an toàn (spotting) trong các hiệp tập nặng và tư vấn lộ trình tập luyện cá nhân hóa theo từng mục tiêu thể chất.',
+      en: 'FitPulse Open Floor features elite Olympic-grade Technogym and Eleiko hardware. Dedicated floor coaching staff are stationed full-time to provide live machine setup, spotting support on heavy sets, and biometric-based workout recommendations.',
+    },
+    certifications: [
+      'FitPulse Certified Floor Safety Standard',
+      'First Aid & CPR/AED American Heart Association',
+      'Olympic Barbell Spotting & Safety Protocol',
+      'InBody 770 Biometric Body Composition Analyst',
+    ],
+    specialties: {
+      vi: ['Hỗ trợ kỹ thuật động tác nâng tạ', 'Kiểm tra tư thế an toàn khi Squat/Deadlift', 'Tư vấn sử dụng máy theo mục tiêu', 'Đo chỉ số cơ thể InBody 770 miễn phí'],
+      en: ['Barbell Spotting & Form Feedback', 'Squat & Deadlift Safety Checks', 'Machine Setup & Target Calibration', 'Complimentary InBody 770 Analysis'],
+    },
+    phone: '028 7300 8899',
+    email: 'support@fitpulse.com',
+    quote: {
+      vi: '"Không gian tập luyện tự do đẳng cấp quốc tế. Chúng tôi đồng hành cùng sự an toàn và tiến bộ của bạn mỗi ngày."',
+      en: '"World-class open training environment. We stand by your safety and progress every single rep."',
+    },
+  },
+}
+
+export function getClassDetails(session: Session, isVi: boolean) {
+  const isPilates = session.discipline === 'Pilates'
+  const isYoga = session.discipline === 'Yoga'
+
+  let level = isVi ? 'Tất cả cấp độ' : 'All Levels'
+  let intensity = isVi ? 'Cường độ: Vừa - Cao' : 'Intensity: Moderate - High'
+  let calories = '380 - 520 kcal'
+
+  if (session.title.includes('Foundations') || session.title.includes('Căn bản') || session.title.includes('Intro')) {
+    level = isVi ? 'Căn bản & Nhập môn' : 'Beginner & Foundations'
+    intensity = isVi ? 'Cường độ: Vừa phải' : 'Intensity: Moderate'
+    calories = '280 - 400 kcal'
+  } else if (session.title.includes('Athletic') || session.title.includes('Burn') || session.title.includes('HIIT') || session.title.includes('Powerlifting')) {
+    level = isVi ? 'Trung cấp & Nâng cao' : 'Intermediate & Advanced'
+    intensity = isVi ? 'Cường độ: Rất cao' : 'Intensity: High'
+    calories = '450 - 650 kcal'
+  } else if (session.title.includes('Yin') || session.title.includes('Rest') || session.title.includes('Sound Bath') || session.title.includes('Gentle')) {
+    level = isVi ? 'Thư giãn & Phục hồi' : 'Restorative & Deep Calm'
+    intensity = isVi ? 'Cường độ: Nhẹ nhàng' : 'Intensity: Gentle'
+    calories = '180 - 260 kcal'
+  }
+
+  const objectives = isPilates
+    ? [
+        {
+          title: isVi ? 'Kích hoạt sâu chuỗi cơ lõi (Deep Core)' : 'Deep Core Activation',
+          desc: isVi ? 'Siết cơ bụng ngang, cơ sàn chậu và cơ dựng sống thông qua hệ thống lò xo kháng lực biến thiên.' : 'Engage transverse abdominis, pelvic floor, and multifidus with progressive spring tension.',
+        },
+        {
+          title: isVi ? 'Nắn chỉnh cột sống & giải tỏa áp lực đĩa đệm' : 'Spinal Decompression & Posture Realignment',
+          desc: isVi ? 'Giải tỏa áp lực lên đĩa đệm đốt sống, định hình trục xương thẳng tự nhiên và kéo dài các nhóm cơ co rút.' : 'Decompress spinal discs, restore neutral alignment, and elongate tight muscle groups.',
+        },
+        {
+          title: isVi ? 'Tăng sức bền dẻo dai và điêu khắc cơ thon dài' : 'Long-line Muscular Endurance & Tone',
+          desc: isVi ? 'Điêu khắc vóc dáng thon gọn, săn chắc mà không làm thô cơ bắp nhờ chuyển động kiểm soát cao.' : 'Sculpt lean, elongated muscle tone without bulk through high-precision eccentric control.',
+        },
+      ]
+    : isYoga
+    ? [
+        {
+          title: isVi ? 'Hòa nhịp hơi thở Pranayama & Chuyển động Asana' : 'Breath & Asana Synchronization',
+          desc: isVi ? 'Đồng bộ từng nhịp thở sâu với các chuỗi tư thế chuyển tiếp mượt mà, lưu thông kinh lạc và khí huyết.' : 'Synchronize Pranayama breathwork with fluid transitions to elevate circulation and vitality.',
+        },
+        {
+          title: isVi ? 'Mở rộng biên độ vận động khớp & Giải phóng hông' : 'Joint Mobility & Hip Decompression',
+          desc: isVi ? 'Tăng độ dẻo dai của khớp hông, gân kheo và cột sống, giải phóng các điểm căng cứng thần kinh.' : 'Expand hip, hamstring, and thoracic range of motion while clearing somatic tension.',
+        },
+        {
+          title: isVi ? 'Tĩnh tâm sâu & Phục hồi hệ thần kinh thực vật' : 'Neural Calming & Parasympathetic Reset',
+          desc: isVi ? 'Hạ mức cortisol gây căng thẳng, kích hoạt hệ thần kinh phó giao cảm giúp ngủ ngon và tái tạo năng lượng.' : 'Downregulate sympathetic stress, lower cortisol, and trigger restorative autonomic recovery.',
+        },
+      ]
+    : [
+        {
+          title: isVi ? 'Tối ưu chỉ số trao đổi chất & Hiệu ứng đốt mỡ EPOC' : 'Metabolic Conditioning & EPOC',
+          desc: isVi ? 'Tăng hiệu ứng đốt năng lượng sau tập luyện (Afterburn) kéo dài nhiều giờ sau khi kết thúc buổi tập.' : 'Maximize excess post-exercise oxygen consumption (EPOC) to elevate caloric expenditure.',
+        },
+        {
+          title: isVi ? 'Phát triển sức mạnh chức năng đa khớp (Compound)' : 'Functional Multi-joint Strength',
+          desc: isVi ? 'Tập trung vào các chuyển động tự nhiên: Squat, Hinge, Push, Pull giúp cơ thể khỏe mạnh toàn diện.' : 'Master foundational multi-joint patterns: Squat, Hinge, Push, Pull for athletic vigor.',
+        },
+        {
+          title: isVi ? 'Cải thiện sức bền tim mạch & Chỉ số VO2 Max' : 'Cardiovascular Endurance & VO2 Max',
+          desc: isVi ? 'Nâng cao ngưỡng chịu đựng tim phổi, củng cố mật độ xương và bảo vệ các khớp xương vận động.' : 'Boost cardiac output, expand aerobic threshold, and fortify joint connective tissues.',
+        },
+      ]
+
+  const syllabus = isPilates
+    ? [
+        {
+          time: '00:00 - 00:10',
+          title: isVi ? 'Khởi động khớp & Kích hoạt hơi thở cơ hoành' : 'Joint Prep & Diaphragmatic Breath',
+          desc: isVi ? 'Thiết lập khung chậu trung tính trên thảm máy, hít thở sườn bên và kích hoạt nhóm cơ ổn định sâu.' : 'Establish neutral spine alignment on the carriage, lateral ribcage breathing, and pelvic floor activation.',
+        },
+        {
+          time: '00:10 - 00:30',
+          title: isVi ? 'Chuỗi bài tập Footwork & Kháng lực dây đai' : 'Footwork Progression & Straps Series',
+          desc: isVi ? 'Bài tập chân trên thanh Footbar với các mức lò xo khác nhau; chuyển tiếp sang bài tập cánh tay và cơ lõi.' : 'Progressive footwork series followed by supine arm and core stability exercises using reformer straps.',
+        },
+        {
+          time: '00:30 - 00:42',
+          title: isVi ? 'Đỉnh cao chuyển động: Khối cơ lõi & Thăng bằng' : 'Peak Movement: Core Elevation & Balance',
+          desc: isVi ? 'Các động tác plank trên bệ di động, động tác Short Box hoặc bài tập bàn nhảy Jumpboard cường độ cao.' : 'Challenging dynamic planks on the carriage, Short Box abdominal series, or rhythmic jumpboard intervals.',
+        },
+        {
+          time: '00:42 - 00:50',
+          title: isVi ? 'Giãn cơ sâu & Phục hồi giải phóng cơ mạc' : 'Deep Stretch & Myofascial Release',
+          desc: isVi ? 'Kéo giãn gân kheo, cơ gập hông (hip flexors) và thả lỏng cột sống kết thúc buổi tập nhẹ nhõm.' : 'Full spinal articulation, deep hip flexor opening, and calming recovery on the reformer frame.',
+        },
+      ]
+    : isYoga
+    ? [
+        {
+          time: '00:00 - 00:12',
+          title: isVi ? 'Thiền tĩnh tâm & Khí công Pranayama' : 'Centering & Pranayama Breathwork',
+          desc: isVi ? 'Ngồi tĩnh lặng, quan sát dòng chảy hơi thở và làm nóng các khớp cổ, vai, hông nhẹ nhàng.' : 'Seated grounding meditation, Ujjayi breathing, and gentle spinal mobilizing stretches.',
+        },
+        {
+          time: '00:12 - 00:35',
+          title: isVi ? 'Chào mặt trời & Dòng chảy tư thế Surya Namaskar' : 'Sun Salutations & Dynamic Asana Flow',
+          desc: isVi ? 'Liên kết nhịp nhàng chuỗi tư thế Chiến binh (Warrior), Thăng bằng tam giác và mở rộng lồng ngực.' : 'Continuous breath-synchronized Surya Namaskar flows, Warrior variations, and expansive chest openers.',
+        },
+        {
+          time: '00:35 - 00:50',
+          title: isVi ? 'Tư thế đỉnh cao & Uốn lưng mở tim an toàn' : 'Peak Pose & Heart-Opening Inversions',
+          desc: isVi ? 'Khám phá thế chim bồ câu (Pigeon), thế cây cầu hoặc các biến thể giữ thăng bằng cánh tay an toàn.' : 'Deep hip opening in Pigeon pose, gentle camel/bridge variations with supportive alignment cues.',
+        },
+        {
+          time: '00:50 - 01:00',
+          title: isVi ? 'Savasana buông thư & Tần số chuông xoay Tây Tạng' : 'Savasana Rest & Tibetan Sound Bath',
+          desc: isVi ? 'Nằm thư giãn hoàn toàn trong sóng âm thanh êm dịu của chuông xoay giúp phục hồi sâu toàn bộ tế bào.' : 'Complete stillness in corpse pose bathed in melodic Tibetan sound frequencies for restorative calm.',
+        },
+      ]
+    : [
+        {
+          time: '00:00 - 00:08',
+          title: isVi ? 'Khởi động động lực học & Kích hoạt hệ thần kinh' : 'Dynamic Movement Prep & Neural Primer',
+          desc: isVi ? 'Làm nóng khớp, kích hoạt nhóm cơ mông, đùi và bả vai với dây chun mini-band và con lăn bọt.' : 'Foam rolling, mobility flow, and glute/shoulder activation with mini-bands to prepare joints.',
+        },
+        {
+          time: '00:08 - 00:25',
+          title: isVi ? 'Khối bài tập sức mạnh Compound trọng tâm' : 'Primary Compound Strength Block',
+          desc: isVi ? 'Thực hiện các động tác tạ phức hợp (Deadlift/Squat/Bench Press) dưới sự giám sát kỹ thuật sát sao.' : 'Execute multi-joint compound barbell lifts under strict biomechanical supervision and tempo coaching.',
+        },
+        {
+          time: '00:25 - 00:38',
+          title: isVi ? 'Vòng lặp chức năng HIIT & Kỹ thuật bổ trợ' : 'Functional Circuit & Metabolic Finisher',
+          desc: isVi ? 'Các hiệp tập xoay vòng tốc độ cao với tạ chuông Kettlebell, bóng tạ Slam Ball và máy chèo thuyền Concept2.' : 'High-energy supersets with kettlebells, slam balls, and Concept2 ergometers for metabolic boost.',
+        },
+        {
+          time: '00:38 - 00:45',
+          title: isVi ? 'Hạ nhịp tim & Phục hồi cơ bắp' : 'Cool Down & Downregulation Breathing',
+          desc: isVi ? 'Kéo giãn cơ bắp tĩnh, hít thở sâu phục hồi nhịp tim về trạng thái bình thường và ghi nhận kết quả.' : 'Static stretching of targeted muscle groups and parasympathetic breathing reset.',
+        },
+      ]
+
+  const equipment = isPilates
+    ? [
+        { label: isVi ? 'Máy Reformer Balanced Body Allegro 2 thế hệ mới' : 'Balanced Body Allegro 2 Reformer' },
+        { label: isVi ? 'Bàn nhảy Jumpboard, hộp đệm Box & vòng Pilates chuyên dụng' : 'Padded Jumpboard, Sitting Box & Magic Circle' },
+        { label: isVi ? 'Khăn lạnh vô trùng & Nước điện giải ion kiềm FitPulse miễn phí' : 'Complimentary Sterile Chilled Towels & Alkaline Electrolytes' },
+        { label: isVi ? 'Phòng tập nhiệt độ chuẩn 22-24°C với lọc khí HEPA áp suất dương' : 'Climate Controlled Studio (22-24°C) with Positive-Pressure HEPA Filtration' },
+      ]
+    : isYoga
+    ? [
+        { label: isVi ? 'Thảm tập cao su thiên nhiên Lululemon 6mm kháng khuẩn' : 'Premium 6mm Natural Rubber Lululemon Mats' },
+        { label: isVi ? 'Bộ gạch tập cork, dây đai dệt cotton & gối ôm yoga bolster' : 'Natural Cork Blocks, Organic Cotton Straps & Yoga Bolsters' },
+        { label: isVi ? 'Chuông xoay Tây Tạng Kathmandu thủ công & tinh dầu trầm hương' : 'Handcrafted Kathmandu Tibetan Singing Bowls & Sandalwood Diffusers' },
+        { label: isVi ? 'Hệ thống âm thanh đa vùng Genelec tái hiện tần số 432Hz chữa lành' : 'Genelec Multi-zone Acoustic System Tuned to 432Hz Healing Frequency' },
+      ]
+    : [
+        { label: isVi ? 'Hệ thống máy kháng lực thông minh Technogym BioStrength' : 'Technogym BioStrength Connected Resistance Fleet' },
+        { label: isVi ? 'Thanh đòn và bánh tạ chuẩn thi đấu Olympic Eleiko Thụy Điển' : 'Eleiko Swedish Competition Barbells & Bumper Plates' },
+        { label: isVi ? 'Thiết bị đo chỉ số InBody 770 y khoa & Đai đo nhịp tim thông minh' : 'Clinical InBody 770 Biometric Scanner & Heart Rate Monitoring' },
+        { label: isVi ? 'Khu vực phục hồi giãn cơ chuyên biệt với súng massage Theragun' : 'Dedicated Recovery Zone Equipped with Theragun Pro Devices' },
+      ]
+
+  const guidelines = [
+    {
+      title: isVi ? 'Thời gian có mặt' : 'Arrival Time',
+      desc: isVi ? 'Vui lòng có mặt trước giờ bắt đầu lớp học 10-15 phút để làm thủ tục check-in, chuẩn bị trang phục và nhận chỗ tập tốt nhất.' : 'Please arrive 10-15 minutes prior to class start to check in, stow belongings, and secure your station.',
+    },
+    {
+      title: isVi ? 'Quy định trang phục' : 'Attire Policy',
+      desc: isPilates
+        ? (isVi ? 'Trang phục tập luyện ôm sát cơ thể co giãn thoải mái. Bắt buộc mang vớ chống trượt (grip socks) khi sử dụng máy Reformer.' : 'Form-fitting flexible activewear. Grip socks are mandatory for all Reformer sessions.')
+        : (isVi ? 'Trang phục thể thao co giãn thoáng khí, giày tập thể thao sạch đế bằng (đối với lớp Gym) hoặc chân trần (đối với Yoga).' : 'Breathable athletic activewear. Clean flat-soled sneakers (Gym) or bare feet (Yoga).'),
+    },
+    {
+      title: isVi ? 'Tình trạng sức khỏe' : 'Health & Pre-existing Conditions',
+      desc: isVi ? 'Nếu bạn đang có chấn thương, tiền sử bệnh cột sống hoặc phụ nữ đang mang thai, vui lòng thông báo cho Huấn luyện viên trước buổi học.' : 'If you are recovering from injury, have spinal restrictions, or are pregnant, please notify the instructor prior to class.',
+    },
+    {
+      title: isVi ? 'Chính sách bảo lưu tín chỉ' : 'Cancellation & Credit Policy',
+      desc: isVi ? 'Hội viên có thể hủy ca tập miễn phí trước giờ bắt đầu tối thiểu 2 tiếng. Tín chỉ lượt tập sẽ được tự động hoàn lại ngay lập tức.' : 'Cancellations made at least 2 hours before class are 100% credit-refundable and returned instantly.',
+    },
+  ]
+
+  return { level, intensity, calories, objectives, syllabus, equipment, guidelines }
+}
+
+function ClassDetailView({
+  session,
+  sessions,
+  bookedSessions,
+  creditsLeft,
+  isVi,
+  onBack,
+  onSelect,
+  onJoinWaitlist,
+  onCancelBooking,
+  onLeaveWaitlist,
+  showToast,
+}: {
+  session: Session
+  sessions: Session[]
+  bookedSessions: BookedSession[]
+  creditsLeft: number
+  isVi: boolean
+  onBack: () => void
+  onSelect: (s: Session) => void
+  onJoinWaitlist: (s: Session) => void
+  onCancelBooking: (bookedId: number, sessionId: number, title: string) => void
+  onLeaveWaitlist: (bookedId: number, title: string) => void
+  showToast: (msg: string) => void
+}) {
+  const liveSession = sessions.find(s => s.id === session.id) || session
+  const bookedItem = bookedSessions.find(b => b.sessionId === liveSession.id && (b.status === 'confirmed' || b.status === 'waitlist'))
+  const isBooked = bookedItem?.status === 'confirmed'
+  const isWaitlisted = bookedItem?.status === 'waitlist'
+  const spotsLeft = liveSession.capacity - liveSession.booked
+  const isFull = spotsLeft <= 0
+
+  const instructorName = liveSession.instructor
+  const instructor = INSTRUCTOR_PROFILES[instructorName] || INSTRUCTOR_PROFILES['Maya Chen']
+  const classDetails = getClassDetails(liveSession, isVi)
+  const sessionTitle = getSessionTitle(liveSession, isVi)
+
+  return (
+    <div className="class-detail-page">
+      {/* Top Navigation */}
+      <div className="class-detail-nav">
+        <button className="button button-ghost" onClick={onBack}>
+          <ArrowLeft style={{ width: 15, height: 15 }} />
+          <span>{isVi ? 'Quay lại Lịch tập Studio' : 'Back to Studio Schedule'}</span>
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {isBooked ? (
+            <button
+              type="button"
+              className="button button-booked-action"
+              onClick={() => onCancelBooking(bookedItem.id, liveSession.id, sessionTitle)}
+            >
+              <span className="btn-label-normal">{isVi ? 'Đã xác nhận đặt chỗ' : 'Confirmed Booking'}</span>
+              <span className="btn-label-hover"><X style={{ width: 12, height: 12 }} /> {isVi ? 'Hủy ca tập này' : 'Cancel Booking'}</span>
+            </button>
+          ) : isWaitlisted ? (
+            <button
+              type="button"
+              className="button button-waitlisted-action"
+              onClick={() => onLeaveWaitlist(bookedItem.id, sessionTitle)}
+            >
+              <span className="btn-label-normal">{isVi ? 'Đang trong hàng chờ #1' : 'Waitlisted #1'}</span>
+              <span className="btn-label-hover"><X style={{ width: 12, height: 12 }} /> {isVi ? 'Rời hàng chờ' : 'Leave Waitlist'}</span>
+            </button>
+          ) : isFull ? (
+            <button
+              className="button button-waitlist"
+              onClick={() => onJoinWaitlist(liveSession)}
+            >
+              <ArrowUpRight style={{ width: 14, height: 14 }} />
+              <span>{isVi ? 'Đăng ký vào hàng chờ' : 'Join Waitlist Queue'}</span>
+            </button>
+          ) : (
+            <button
+              className="button button-primary"
+              onClick={() => onSelect(liveSession)}
+            >
+              <Zap style={{ width: 14, height: 14 }} />
+              <span>{isVi ? 'Đặt ca học này ngay' : 'Book This Class'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Page Header */}
+      <PageHeader
+        eyebrow={isVi ? `CHI TIẾT LỚP HỌC · ${liveSession.discipline.toUpperCase()} STUDIO` : `CLASS DETAIL · ${liveSession.discipline.toUpperCase()} STUDIO`}
+        title={sessionTitle}
+        description={
+          isVi
+            ? `Lớp học chuyên sâu thiết kế theo giáo trình chuẩn quốc tế, trang bị máy tập cao cấp và điều phối bởi Huấn luyện viên ${formatInstructor(liveSession.instructor, isVi)}.`
+            : `Comprehensive studio class engineered with world-class curriculum, elite hardware, led by Coach ${formatInstructor(liveSession.instructor, false)}.`
+        }
+        action={
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Chip tone={liveSession.color as any}>{liveSession.discipline}</Chip>
+            {isBooked && <Chip tone="green">{isVi ? 'Bạn đã đặt' : 'Booked'}</Chip>}
+            {isWaitlisted && <Chip tone="amber">{isVi ? 'Hàng chờ #1' : 'Waitlist #1'}</Chip>}
+            {isFull && !isBooked && !isWaitlisted && <Chip tone="red">{isVi ? 'Đã đủ chỗ' : 'Class Full'}</Chip>}
+            {!isFull && !isBooked && !isWaitlisted && (
+              <Chip tone="green">
+                <span className="pulse-dot" /> {spotsLeft} {isVi ? 'chỗ còn trống' : 'spots available'}
+              </Chip>
+            )}
+          </div>
+        }
+      />
+
+      {/* Quick Stats Ribbon */}
+      <div className="class-quick-stats">
+        <div className="class-stat-card">
+          <div className="class-stat-header">
+            <Clock3 />
+            <span>{isVi ? 'Khung giờ & Thời lượng' : 'Time & Duration'}</span>
+          </div>
+          <div className="class-stat-value">{liveSession.time} · {formatDuration(liveSession.duration, isVi)}</div>
+          <div className="class-stat-sub">
+            {liveSession.date ? `${formatDay(liveSession.day, isVi)}, ${liveSession.date}` : formatDay(liveSession.day, isVi)}
+          </div>
+        </div>
+
+        <div className="class-stat-card">
+          <div className="class-stat-header">
+            <MapPin />
+            <span>{isVi ? 'Phòng tập & Không gian' : 'Studio Room'}</span>
+          </div>
+          <div className="class-stat-value">{formatRoom(liveSession.room, isVi)}</div>
+          <div className="class-stat-sub">
+            {isVi ? 'Hệ thống khí sạch HEPA & Âm học 432Hz' : 'HEPA Clean Air & 432Hz Acoustics'}
+          </div>
+        </div>
+
+        <div className="class-stat-card">
+          <div className="class-stat-header">
+            <Users />
+            <span>{isVi ? 'Huấn luyện viên phụ trách' : 'Lead Instructor'}</span>
+          </div>
+          <div className="class-stat-value">{formatInstructor(liveSession.instructor, isVi)}</div>
+          <div className="class-stat-sub">
+            {isVi ? instructor.title.vi : instructor.title.en}
+          </div>
+        </div>
+
+        <div className="class-stat-card">
+          <div className="class-stat-header">
+            <Target />
+            <span>{isVi ? 'Sĩ số & Chỗ trống' : 'Roster Capacity'}</span>
+          </div>
+          <div className="class-stat-value">{liveSession.booked} / {liveSession.capacity} {isVi ? 'học viên' : 'trainees'}</div>
+          <div className="class-stat-sub">
+            {isFull ? (isVi ? 'Lớp đã đủ người' : 'Class at capacity') : (isVi ? `Còn ${spotsLeft} chỗ đặt ngay` : `${spotsLeft} open spots`)}
+          </div>
+        </div>
+      </div>
+
+      {/* Two Column Layout */}
+      <div className="profile-grid-layout">
+        {/* Left Column: Syllabus & Facilities */}
+        <div>
+          {/* Card 1: Overview & Physical Target */}
+          <div className="detail-card">
+            <div className="section-heading" style={{ marginBottom: 16 }}>
+              <div>
+                <h2>{isVi ? 'Mục tiêu thể chất & Lợi ích vận động' : 'Physical Objectives & Benefits'}</h2>
+                <p>{isVi ? 'Định hình vóc dáng, tối ưu chuyển hóa năng lượng và cải thiện cơ sinh học' : 'Body contouring, metabolic optimization, and kinetic alignment'}</p>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Chip tone="violet">{classDetails.level}</Chip>
+                <Chip tone="amber">{classDetails.intensity}</Chip>
+                <Chip tone="green">{classDetails.calories}</Chip>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {classDetails.objectives.map((obj, i) => (
+                <div key={i} className="perk-item" style={{ alignItems: 'flex-start', padding: '12px 14px' }}>
+                  <CircleCheck style={{ marginTop: 2, flexShrink: 0 }} />
+                  <div>
+                    <strong style={{ display: 'block', fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{obj.title}</strong>
+                    <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.45, fontWeight: 400 }}>{obj.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 2: Syllabus Timeline */}
+          <div className="detail-card">
+            <div className="section-heading" style={{ marginBottom: 14 }}>
+              <div>
+                <h2>{isVi ? 'Khung tiến trình buổi học (Syllabus)' : 'Class Flow & Syllabus'}</h2>
+                <p>{isVi ? 'Các giai đoạn bài tập được thiết kế khoa học từng phút' : 'Scientifically sequenced phases engineered for maximum progression'}</p>
+              </div>
+            </div>
+
+            <div className="session-timeline">
+              {classDetails.syllabus.map((step, idx) => (
+                <div key={idx} className="timeline-item">
+                  <div className="timeline-time-badge">{step.time}</div>
+                  <div className="timeline-content">
+                    <strong>{step.title}</strong>
+                    <p>{step.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 3: Equipment & Studio Amenities */}
+          <div className="detail-card">
+            <div className="section-heading" style={{ marginBottom: 14 }}>
+              <div>
+                <h2>{isVi ? 'Trang thiết bị & Tiện ích tiêu chuẩn' : 'Equipment & Studio Amenities'}</h2>
+                <p>{isVi ? 'Được trang bị hoàn toàn miễn phí cho Hội viên trong suốt buổi học' : 'Complimentary elite studio amenities provided throughout your session'}</p>
+              </div>
+            </div>
+
+            <div className="perks-grid">
+              {classDetails.equipment.map((eq, idx) => (
+                <div key={idx} className="perk-item">
+                  <Check style={{ color: 'var(--teal)', width: 14, height: 14, flexShrink: 0 }} />
+                  <span>{eq.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 4: Trainee Preparation Guidelines */}
+          <div className="detail-card">
+            <div className="section-heading" style={{ marginBottom: 14 }}>
+              <div>
+                <h2>{isVi ? 'Hướng dẫn chuẩn bị cho Hội viên' : 'Preparation Guidelines'}</h2>
+                <p>{isVi ? 'Lưu ý cần thiết để có trải nghiệm luyện tập an toàn và trọn vẹn nhất' : 'Key recommendations for an optimal, safe, and comfortable session'}</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {classDetails.guidelines.map((rule, idx) => (
+                <div key={idx} style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)' }}>
+                  <strong style={{ fontSize: 11, color: 'var(--text)', display: 'block', marginBottom: 2 }}>{rule.title}</strong>
+                  <span style={{ fontSize: 10.5, color: 'var(--muted)', lineHeight: 1.45 }}>{rule.desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Instructor Dossier & Pass Status */}
+        <div>
+          {/* Card 1: Lead Instructor Dossier */}
+          <div className="instructor-dossier-card" style={{ marginBottom: 22 }}>
+            <div className="instructor-dossier-top">
+              <div className="instructor-dossier-avatar" style={{ background: instructor.avatarColor }}>
+                {instructor.avatar}
+              </div>
+              <div className="instructor-dossier-info">
+                <h3>{formatInstructor(instructor.name, isVi)}</h3>
+                <p>{isVi ? instructor.title.vi : instructor.title.en}</p>
+                <div style={{ marginTop: 4 }}>
+                  <Chip tone="green">
+                    <ShieldCheck style={{ width: 11, height: 11 }} />
+                    <span>{isVi ? 'Đã kiểm duyệt chuyên môn' : 'Verified Instructor'}</span>
+                  </Chip>
+                </div>
+              </div>
+            </div>
+
+            {/* Rating & Teaching Stats */}
+            <div className="instructor-rating-row">
+              <div className="instructor-rating-item">
+                <Star />
+                <span>{instructor.rating} / 5.0</span>
+              </div>
+              <span style={{ color: 'var(--muted)', fontSize: 11 }}>·</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                {instructor.reviewCount} {isVi ? 'đánh giá hội viên' : 'reviews'}
+              </span>
+              <span style={{ color: 'var(--muted)', fontSize: 11 }}>·</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                {instructor.teachingHours}
+              </span>
+            </div>
+
+            {/* Bio */}
+            <div>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                {isVi ? 'Tiểu sử & Phong cách giảng dạy' : 'Biography & Teaching Philosophy'}
+              </span>
+              <p style={{ fontSize: 11.5, color: 'var(--text)', lineHeight: 1.55, margin: 0 }}>
+                {isVi ? instructor.bio.vi : instructor.bio.en}
+              </p>
+            </div>
+
+            {/* Quote */}
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(198, 243, 107, 0.05)', border: '1px solid rgba(198, 243, 107, 0.2)', fontStyle: 'italic', fontSize: 11, color: 'var(--text)' }}>
+              {isVi ? instructor.quote.vi : instructor.quote.en}
+            </div>
+
+            {/* Certifications */}
+            <div>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+                {isVi ? 'Chứng chỉ & Bằng cấp quốc tế' : 'Accreditations & Certifications'}
+              </span>
+              <div className="instructor-tags-wrap">
+                {instructor.certifications.map((cert, i) => (
+                  <span key={i} className="instructor-tag">
+                    <Award style={{ width: 11, height: 11, color: 'var(--teal)', display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                    {cert}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Specialties */}
+            <div>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+                {isVi ? 'Lĩnh vực chuyên sâu' : 'Core Disciplines & Specialties'}
+              </span>
+              <div className="instructor-tags-wrap">
+                {(isVi ? instructor.specialties.vi : instructor.specialties.en).map((spec, i) => (
+                  <span key={i} className="instructor-tag" style={{ color: 'var(--text)', fontWeight: 500 }}>
+                    {spec}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Contact Support */}
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)' }}>
+                <Mail style={{ width: 13, height: 13 }} />
+                <span>{instructor.email}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)' }}>
+                <Phone style={{ width: 13, height: 13 }} />
+                <span>{instructor.phone}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Pass Status & Quick Action */}
+          <div className="detail-card">
+            <div className="section-heading" style={{ marginBottom: 14 }}>
+              <div>
+                <h2>{isVi ? 'Tài khoản & Thao tác đặt ca' : 'Your Pass & Booking Action'}</h2>
+                <p>{isVi ? 'Trừ 1 tín chỉ cho mỗi lần đặt chỗ chính thức' : 'Deducts 1 session credit per confirmed booking'}</p>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{isVi ? 'Số buổi tập khả dụng' : 'Available Credits'}</span>
+                <strong style={{ fontSize: 14, color: 'var(--lime)' }}>{creditsLeft} / 10 {isVi ? 'buổi' : 'credits'}</strong>
+              </div>
+              <div className="progress">
+                <i style={{ width: `${(creditsLeft / 10) * 100}%` }} />
+              </div>
+            </div>
+
+            {isBooked ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--teal)', fontSize: 11, fontWeight: 600 }}>
+                  <CircleCheck style={{ width: 15, height: 15 }} />
+                  <span>{isVi ? 'Bạn đã có chỗ chắc chắn trong lớp học này!' : 'You have a confirmed spot in this class!'}</span>
+                </div>
+                <button
+                  type="button"
+                  className="button button-ghost"
+                  onClick={() => onCancelBooking(bookedItem.id, liveSession.id, sessionTitle)}
+                  style={{ width: '100%', justifyContent: 'center', color: '#f18c88' }}
+                >
+                  <Trash2 style={{ width: 14, height: 14 }} />
+                  <span>{isVi ? 'Hủy đặt chỗ (Hoàn 1 tín chỉ)' : 'Cancel Booking (+1 Credit Refund)'}</span>
+                </button>
+              </div>
+            ) : isWaitlisted ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--amber)', fontSize: 11, fontWeight: 600 }}>
+                  <Clock3 style={{ width: 15, height: 15 }} />
+                  <span>{isVi ? 'Bạn đang ở vị trí #1 danh sách chờ!' : 'You are #1 on the waiting list!'}</span>
+                </div>
+                <button
+                  type="button"
+                  className="button button-ghost"
+                  onClick={() => onLeaveWaitlist(bookedItem.id, sessionTitle)}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  <X style={{ width: 14, height: 14 }} />
+                  <span>{isVi ? 'Rời hàng chờ' : 'Leave Waitlist'}</span>
+                </button>
+              </div>
+            ) : isFull ? (
+              <button
+                className="button button-waitlist"
+                onClick={() => onJoinWaitlist(liveSession)}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                <ArrowUpRight style={{ width: 14, height: 14 }} />
+                <span>{isVi ? 'Tham gia hàng chờ (Tự động vào khi có người hủy)' : 'Join Waitlist (Auto-enrolls on cancel)'}</span>
+              </button>
+            ) : (
+              <button
+                className="button button-primary"
+                onClick={() => onSelect(liveSession)}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                <Zap style={{ width: 14, height: 14 }} />
+                <span>{isVi ? 'Xác nhận đặt chỗ (1 tín chỉ)' : 'Confirm Booking (1 Credit)'}</span>
+              </button>
+            )}
+
+            <div style={{ marginTop: 14, fontSize: 10, color: 'var(--muted)', lineHeight: 1.4, textAlign: 'center' }}>
+              {isVi ? '✓ Miễn phí hủy ca trước 2 tiếng · Hoàn trả 100% tín chỉ ngay lập tức' : '✓ Free cancellation up to 2h prior · 100% instant credit refund'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -2649,7 +3535,7 @@ function InstructorProfileView({
         name: editName.trim(),
         email: editEmail.trim(),
         phone: editPhone.trim(),
-        bio: editBio.trim(),
+        bio: (editBio || '').trim(),
       })
     }
     setIsEditing(false)
