@@ -678,6 +678,8 @@ export default function FitPulseApp() {
                   setActiveDay={setActiveDay}
                   onSelect={setSelected}
                   onJoinWaitlist={joinWaitlist}
+                  onCancelBooking={cancelBooking}
+                  onLeaveWaitlist={leaveWaitlist}
                   bookedSessions={bookedSessions}
                   isVi={isVi}
                   user={currentUser}
@@ -976,6 +978,8 @@ function MemberView({
   setActiveDay,
   onSelect,
   onJoinWaitlist,
+  onCancelBooking,
+  onLeaveWaitlist,
   bookedSessions,
   isVi,
   user,
@@ -990,6 +994,8 @@ function MemberView({
   setActiveDay: (d: string) => void
   onSelect: (s: Session) => void
   onJoinWaitlist: (s: Session) => void
+  onCancelBooking?: (bookedId: number, sessionId: number, title: string) => void
+  onLeaveWaitlist?: (bookedId: number, title: string) => void
   bookedSessions: BookedSession[]
   isVi: boolean
   user: User
@@ -1166,59 +1172,54 @@ function MemberView({
               <h2>{copy.schedule}</h2>
               <p>{getWeekRange(weekOffset, isVi)}</p>
             </div>
-            <div className="week-nav-controls">
-              <button
-                type="button"
-                className="week-nav-btn"
-                onClick={() => setWeekOffset(w => w - 1)}
-                title={isVi ? 'Tuần trước' : 'Previous week'}
-                aria-label="Previous week"
-              >
-                <ChevronLeft style={{ width: 14, height: 14 }} />
-              </button>
-
-              <button
-                type="button"
-                className={`button button-ghost week-nav-current ${weekOffset === 0 ? 'is-current' : ''}`}
-                onClick={() => { setWeekOffset(0); setActiveDay('Mon'); }}
-                title={isVi ? 'Trở về tuần hiện tại' : 'Return to current week'}
-              >
-                <CalendarDays style={{ width: 13, height: 13 }} />
-                <span>{copy.thisWeek}</span>
-                {weekOffset !== 0 && (
-                  <span className="week-offset-badge">
-                    {weekOffset > 0 ? `+${weekOffset}w` : `${weekOffset}w`}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                className="week-nav-btn"
-                onClick={() => setWeekOffset(w => w + 1)}
-                title={isVi ? 'Tuần sau' : 'Next week'}
-                aria-label="Next week"
-              >
-                <ChevronRight style={{ width: 14, height: 14 }} />
-              </button>
-            </div>
+            <button
+              type="button"
+              className="button button-ghost"
+              onClick={() => { setWeekOffset(0); setActiveDay('Mon'); }}
+              title={isVi ? 'Trở về tuần hiện tại' : 'Jump to current week'}
+            >
+              <CalendarDays /> {copy.thisWeek}
+            </button>
           </div>
 
-          <div className="day-tabs">
-            {days.map((day, idx) => {
-              const dateObj = getDayDate(weekOffset, idx)
-              return (
-                <button
-                  key={day}
-                  className={day === activeDay ? 'selected' : ''}
-                  onClick={() => setActiveDay(day)}
-                  title={`${isVi ? DAY_LABELS_SHORT[day] : day}, ${dateObj.getDate()}/${dateObj.getMonth() + 1}`}
-                >
-                  <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
-                  <strong>{dateObj.getDate()}</strong>
-                </button>
-              )
-            })}
+          <div className="day-tabs-row">
+            <button
+              type="button"
+              className="week-nav-arrow-btn"
+              onClick={() => setWeekOffset(w => w - 1)}
+              title={isVi ? 'Tuần trước' : 'Previous week'}
+              aria-label="Previous week"
+            >
+              <ChevronLeft style={{ width: 16, height: 16 }} />
+            </button>
+
+            <div className="day-tabs">
+              {days.map((day, idx) => {
+                const dateObj = getDayDate(weekOffset, idx)
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    className={day === activeDay ? 'selected' : ''}
+                    onClick={() => setActiveDay(day)}
+                    title={`${isVi ? DAY_LABELS_SHORT[day] : day}, ${dateObj.getDate()}/${dateObj.getMonth() + 1}`}
+                  >
+                    <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
+                    <strong>{dateObj.getDate()}</strong>
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              className="week-nav-arrow-btn"
+              onClick={() => setWeekOffset(w => w + 1)}
+              title={isVi ? 'Tuần sau' : 'Next week'}
+              aria-label="Next week"
+            >
+              <ChevronRight style={{ width: 16, height: 16 }} />
+            </button>
           </div>
 
           {/* Advanced Search & Filtering Suite */}
@@ -1329,14 +1330,18 @@ function MemberView({
               const dateFormatted = `${String(targetDate.getDate()).padStart(2, '0')}/${String(targetDate.getMonth() + 1).padStart(2, '0')}/${targetDate.getFullYear()}`
               const sessionWithDate: Session = { ...session, date: dateFormatted }
 
-              const isBooked = bookedSessions.some(b => b.sessionId === session.id && b.status === 'confirmed')
-              const isWaitlisted = bookedSessions.some(b => b.sessionId === session.id && b.status === 'waitlist')
+              const bookedItem = bookedSessions.find(b => b.sessionId === session.id && (b.status === 'confirmed' || b.status === 'waitlist'))
+              const isBooked = bookedItem?.status === 'confirmed'
+              const isWaitlisted = bookedItem?.status === 'waitlist'
+
               return (
                 <SessionRow
                   key={`${session.id}-${weekOffset}`}
                   session={sessionWithDate}
                   onSelect={onSelect}
                   onJoinWaitlist={onJoinWaitlist}
+                  onCancelBooking={onCancelBooking && bookedItem ? () => onCancelBooking(bookedItem.id, session.id, getSessionTitle(session, isVi)) : undefined}
+                  onLeaveWaitlist={onLeaveWaitlist && bookedItem ? () => onLeaveWaitlist(bookedItem.id, getSessionTitle(session, isVi)) : undefined}
                   isVi={isVi}
                   isBooked={isBooked}
                   isWaitlisted={isWaitlisted}
@@ -1390,6 +1395,8 @@ function SessionRow({
   session,
   onSelect,
   onJoinWaitlist,
+  onCancelBooking,
+  onLeaveWaitlist,
   isVi,
   isBooked,
   isWaitlisted,
@@ -1397,6 +1404,8 @@ function SessionRow({
   session: Session
   onSelect: (s: Session) => void
   onJoinWaitlist: (s: Session) => void
+  onCancelBooking?: () => void
+  onLeaveWaitlist?: () => void
   isVi: boolean
   isBooked: boolean
   isWaitlisted: boolean
@@ -1431,12 +1440,24 @@ function SessionRow({
       </div>
 
       {isBooked ? (
-        <button className="button button-booked" disabled>
-          {isVi ? 'Đã đặt' : 'Booked'}
+        <button
+          type="button"
+          className="button button-booked-action"
+          onClick={onCancelBooking}
+          title={isVi ? 'Bấm để hủy ca tập này' : 'Click to cancel booking'}
+        >
+          <span className="btn-label-normal">{isVi ? 'Đã đặt' : 'Booked'}</span>
+          <span className="btn-label-hover"><X style={{ width: 11, height: 11 }} /> {isVi ? 'Hủy ca' : 'Cancel'}</span>
         </button>
       ) : isWaitlisted ? (
-        <button className="button button-waitlisted" disabled>
-          {isVi ? 'Hàng chờ #1' : 'Waitlist #1'}
+        <button
+          type="button"
+          className="button button-waitlisted-action"
+          onClick={onLeaveWaitlist}
+          title={isVi ? 'Bấm để rời danh sách hàng chờ' : 'Click to leave waitlist'}
+        >
+          <span className="btn-label-normal">{isVi ? 'Hàng chờ #1' : 'Waitlist #1'}</span>
+          <span className="btn-label-hover"><X style={{ width: 11, height: 11 }} /> {isVi ? 'Rời chờ' : 'Leave'}</span>
         </button>
       ) : full ? (
         <button

@@ -1091,65 +1091,128 @@ button:disabled { cursor: not-allowed; }
 /* ==========================================================================
    WEEK NAVIGATION CONTROLS
    ========================================================================== */
-.week-nav-controls {
+/* Day Tabs Row with Embedded Navigation Arrows */
+.day-tabs-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  margin: 22px 0 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
 }
 
-.week-nav-btn {
+.day-tabs-row .day-tabs {
+  flex: 1;
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.week-nav-arrow-btn {
   display: grid;
   place-items: center;
   width: 32px;
-  height: 32px;
+  height: 48px;
   border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--panel);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
   color: var(--muted);
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.16s ease;
 }
 
-.week-nav-btn:hover {
+.week-nav-arrow-btn:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
   border-color: var(--lime);
+  color: var(--text);
   transform: translateY(-1px);
 }
 
-.theme-light .week-nav-btn {
+.theme-light .week-nav-arrow-btn {
   background: #ffffff;
-  border-color: rgba(20, 48, 34, 0.2);
-  color: #243d31;
+  border-color: rgba(20, 48, 34, 0.18);
+  color: #3b5748;
 }
 
-.theme-light .week-nav-btn:hover {
+.theme-light .week-nav-arrow-btn:hover {
   background: rgba(30, 80, 56, 0.08);
   border-color: #4f7416;
   color: #0d1e16;
 }
 
-.week-nav-current {
+/* Interactive Direct Cancel / Leave Buttons on Schedule Row */
+.button-booked-action {
+  background: rgba(108, 224, 188, 0.1) !important;
+  color: var(--teal) !important;
+  border: 1px solid rgba(108, 224, 188, 0.28) !important;
+  cursor: pointer !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.18s ease !important;
+}
+
+.button-booked-action:hover {
+  background: rgba(241, 140, 136, 0.18) !important;
+  color: #f18c88 !important;
+  border-color: rgba(241, 140, 136, 0.45) !important;
+}
+
+.theme-light .button-booked-action {
+  background: rgba(20, 114, 87, 0.08) !important;
+  color: #147257 !important;
+  border-color: rgba(20, 114, 87, 0.28) !important;
+  font-weight: 700;
+}
+
+.theme-light .button-booked-action:hover {
+  background: rgba(214, 69, 61, 0.12) !important;
+  color: #b73933 !important;
+  border-color: rgba(214, 69, 61, 0.38) !important;
+}
+
+.button-waitlisted-action {
+  background: rgba(244, 190, 104, 0.14) !important;
+  color: #f4be68 !important;
+  border: 1px solid rgba(244, 190, 104, 0.42) !important;
+  cursor: pointer !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.18s ease !important;
+}
+
+.button-waitlisted-action:hover {
+  background: rgba(241, 140, 136, 0.18) !important;
+  color: #f18c88 !important;
+  border-color: rgba(241, 140, 136, 0.45) !important;
+}
+
+.theme-light .button-waitlisted-action {
+  background: rgba(148, 93, 27, 0.1) !important;
+  color: #945d1b !important;
+  border-color: rgba(148, 93, 27, 0.35) !important;
+  font-weight: 700;
+}
+
+.theme-light .button-waitlisted-action:hover {
+  background: rgba(214, 69, 61, 0.12) !important;
+  color: #b73933 !important;
+  border-color: rgba(214, 69, 61, 0.38) !important;
+}
+
+.button-booked-action .btn-label-hover,
+.button-waitlisted-action .btn-label-hover {
+  display: none;
+}
+
+.button-booked-action:hover .btn-label-normal,
+.button-waitlisted-action:hover .btn-label-normal {
+  display: none;
+}
+
+.button-booked-action:hover .btn-label-hover,
+.button-waitlisted-action:hover .btn-label-hover {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  height: 32px;
-}
-
-.week-offset-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 800;
-  background: var(--lime);
-  color: #111a18;
-}
-
-.theme-light .week-offset-badge {
-  background: #4f7416;
-  color: #ffffff;
+  gap: 4px;
 }
