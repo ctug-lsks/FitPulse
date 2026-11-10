@@ -1408,7 +1408,7 @@ function MemberView({
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder={isVi ? 'Tìm theo tên ca tập hoặc HLV (ví dụ: Maya, Reformer, Flow, HIIT...)' : 'Search by class or coach (e.g. Maya, Reformer, Flow, HIIT...)'}
+                placeholder={isVi ? 'Tìm lớp học hoặc huấn luyện viên...' : 'Search class or coach...'}
                 className="search-input"
               />
               {searchQuery && (
@@ -1418,81 +1418,67 @@ function MemberView({
               )}
             </div>
 
-            {/* Checkbox Filter Controls: Multi-choice Disciplines & Time Slots */}
+            {/* Minimalist Filter Controls: Sleek Tag Pills */}
             <div className="filter-controls-row">
-              {/* Discipline Checkboxes */}
+              {/* Discipline Filters */}
               <div className="filter-group">
                 <span className="filter-group-title">
                   {isVi ? 'Bộ môn:' : 'Discipline:'}
                 </span>
                 <div className="filter-checkbox-group">
-                  <label className={`filter-checkbox-pill ${selectedDisciplines.length === 0 || selectedDisciplines.length === 3 ? 'checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={selectedDisciplines.length === 0 || selectedDisciplines.length === 3}
-                      onChange={selectAllDisciplines}
-                    />
-                    <span className="checkbox-indicator">
-                      {(selectedDisciplines.length === 0 || selectedDisciplines.length === 3) && <Check />}
-                    </span>
-                    <span className="checkbox-text">{copy.allDisciplines}</span>
-                  </label>
+                  <button
+                    type="button"
+                    className={`filter-checkbox-pill ${selectedDisciplines.length === 0 || selectedDisciplines.length === 3 ? 'checked' : ''}`}
+                    onClick={selectAllDisciplines}
+                  >
+                    <span>{copy.allDisciplines}</span>
+                  </button>
 
                   {(['Gym', 'Pilates', 'Yoga'] as Discipline[]).map(d => {
                     const isChecked = selectedDisciplines.length > 0 && selectedDisciplines.includes(d)
                     return (
-                      <label key={d} className={`filter-checkbox-pill ${isChecked ? 'checked' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleDiscipline(d)}
-                        />
-                        <span className="checkbox-indicator">
-                          {isChecked && <Check />}
-                        </span>
-                        <span className="checkbox-text">{d}</span>
-                      </label>
+                      <button
+                        key={d}
+                        type="button"
+                        className={`filter-checkbox-pill ${isChecked ? 'checked' : ''}`}
+                        onClick={() => toggleDiscipline(d)}
+                      >
+                        <span>{d}</span>
+                      </button>
                     )
                   })}
                 </div>
               </div>
 
-              {/* Time Slot Checkboxes */}
+              {/* Time Slot Filters */}
               <div className="filter-group">
                 <span className="filter-group-title">
-                  {isVi ? 'Khung giờ:' : 'Time of day:'}
+                  {isVi ? 'Khung giờ:' : 'Time:'}
                 </span>
                 <div className="filter-checkbox-group">
-                  <label className={`filter-checkbox-pill ${selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3 ? 'checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3}
-                      onChange={() => setSelectedTimeSlots([])}
-                    />
-                    <span className="checkbox-indicator">
-                      {(selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3) && <Check />}
-                    </span>
-                    <span className="checkbox-text">{isVi ? 'Cả ngày' : 'All day'}</span>
-                  </label>
+                  <button
+                    type="button"
+                    className={`filter-checkbox-pill ${selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3 ? 'checked' : ''}`}
+                    onClick={() => setSelectedTimeSlots([])}
+                  >
+                    <span>{isVi ? 'Tất cả giờ' : 'All day'}</span>
+                  </button>
 
                   {([
-                    { id: 'morning' as const, label: isVi ? '🌅 Sáng' : '🌅 Morning' },
-                    { id: 'afternoon' as const, label: isVi ? '☀️ Chiều' : '☀️ Afternoon' },
-                    { id: 'evening' as const, label: isVi ? '🌙 Tối' : '🌙 Evening' },
+                    { id: 'morning' as const, label: isVi ? 'Sáng' : 'Morning' },
+                    { id: 'afternoon' as const, label: isVi ? 'Chiều' : 'Afternoon' },
+                    { id: 'evening' as const, label: isVi ? 'Tối' : 'Evening' },
                   ]).map(item => {
                     const isChecked = selectedTimeSlots.length > 0 && selectedTimeSlots.includes(item.id)
                     return (
-                      <label key={item.id} className={`filter-checkbox-pill ${isChecked ? 'checked' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleTimeSlot(item.id)}
-                        />
-                        <span className="checkbox-indicator">
-                          {isChecked && <Check />}
-                        </span>
-                        <span className="checkbox-text">{item.label}</span>
-                      </label>
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`filter-checkbox-pill ${isChecked ? 'checked' : ''}`}
+                        onClick={() => toggleTimeSlot(item.id)}
+                      >
+                        <span>{item.label}</span>
+                      </button>
                     )
                   })}
                 </div>
