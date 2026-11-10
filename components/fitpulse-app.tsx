@@ -590,8 +590,7 @@ export default function FitPulseApp() {
   ], [isVi])
 
   const instructorNavItems = useMemo(() => [
-    { id: 'schedule', label: isVi ? 'Lịch giảng dạy HLV' : 'Teaching schedule', icon: CalendarDays },
-    { id: 'profile', label: isVi ? 'Hồ sơ chuyên môn HLV' : 'Coach profile', icon: Award },
+    { id: 'schedule', label: isVi ? 'Lịch giảng dạy' : 'Teaching schedule', icon: CalendarDays },
   ], [isVi])
 
   const adminNavItems = useMemo(() => [
@@ -760,28 +759,16 @@ export default function FitPulseApp() {
                   )}
 
                   {currentUser.role === 'instructor' && (
-                    <>
-                      <button
-                        className="user-dropdown-item"
-                        onClick={() => {
-                          setInstructorTab('profile')
-                          setUserMenuOpen(false)
-                        }}
-                      >
-                        <Award style={{ width: 14, height: 14, color: 'var(--violet)' }} />
-                        <span>{t('Hồ sơ chuyên môn HLV', 'Coach Profile')}</span>
-                      </button>
-                      <button
-                        className="user-dropdown-item"
-                        onClick={() => {
-                          setInstructorTab('schedule')
-                          setUserMenuOpen(false)
-                        }}
-                      >
-                        <CalendarDays style={{ width: 14, height: 14, color: 'var(--teal)' }} />
-                        <span>{t('Lịch giảng dạy HLV', 'Teaching Schedule')}</span>
-                      </button>
-                    </>
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setInstructorTab('profile')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <Award style={{ width: 14, height: 14, color: 'var(--violet)' }} />
+                      <span>{t('Hồ sơ chuyên môn & Thẻ HLV', 'Coach Profile & Pass')}</span>
+                    </button>
                   )}
 
                   {currentUser.role === 'admin' && (
