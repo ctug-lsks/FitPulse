@@ -625,34 +625,79 @@ export default function FitPulseApp() {
                   </div>
 
                   {currentUser.role === 'member' && (
-                    <button
-                      className="user-dropdown-item"
-                      onClick={() => {
-                        setMemberTab('profile')
-                        setUserMenuOpen(false)
-                      }}
-                    >
-                      <QrCode style={{ width: 14, height: 14, color: 'var(--teal)' }} />
-                      <span>{t('Hồ sơ & Thẻ hội viên', 'Profile & Pass')}</span>
-                    </button>
+                    <>
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setMemberTab('profile')
+                          setUserMenuOpen(false)
+                        }}
+                      >
+                        <QrCode style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                        <span>{t('Hồ sơ & Thẻ hội viên', 'Profile & Pass')}</span>
+                      </button>
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          showToast(isVi ? 'Đang tải cài đặt tài khoản...' : 'Opening account settings...')
+                        }}
+                      >
+                        <Settings2 style={{ width: 14, height: 14, color: 'var(--muted)' }} />
+                        <span>{t('Cài đặt tài khoản', 'Account Settings')}</span>
+                      </button>
+                    </>
                   )}
 
-                  <button
-                    className="user-dropdown-item"
-                    onClick={() => {
-                      localStorage.removeItem('fitpulse_sessions')
-                      localStorage.removeItem('fitpulse_booked_sessions')
-                      localStorage.removeItem('fitpulse_credits_left')
-                      setSessions(initialSessions)
-                      setBookedSessions(initialBookedSessions)
-                      setCreditsLeft(8)
-                      setUserMenuOpen(false)
-                      showToast(isVi ? 'Đã khôi phục dữ liệu ban đầu!' : 'Reset sample data successfully!')
-                    }}
-                  >
-                    <RefreshCw style={{ width: 14, height: 14, color: 'var(--muted)' }} />
-                    <span>{t('Khôi phục dữ liệu mẫu', 'Reset sample data')}</span>
-                  </button>
+                  {currentUser.role === 'instructor' && (
+                    <>
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          showToast(isVi ? 'Hồ sơ chuyên môn: Maya Chen · HLV Trưởng Pilates & Yoga Quốc tế' : 'Coach Profile: Maya Chen · Senior Pilates Coach')
+                        }}
+                      >
+                        <Award style={{ width: 14, height: 14, color: 'var(--violet)' }} />
+                        <span>{t('Hồ sơ chuyên môn HLV', 'Coach Profile')}</span>
+                      </button>
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          showToast(isVi ? 'Cài đặt ca dạy khả dụng: 07:00 - 19:30' : 'Availability schedule: 07:00 - 19:30')
+                        }}
+                      >
+                        <Clock3 style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                        <span>{t('Lịch dạy khả dụng', 'Teaching Availability')}</span>
+                      </button>
+                    </>
+                  )}
+
+                  {currentUser.role === 'admin' && (
+                    <>
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          showToast(isVi ? 'Đang mở Cài đặt Hệ thống Studio...' : 'Opening Studio Settings...')
+                        }}
+                      >
+                        <Settings2 style={{ width: 14, height: 14, color: 'var(--amber)' }} />
+                        <span>{t('Cài đặt hệ thống Studio', 'Studio Settings')}</span>
+                      </button>
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          showToast(isVi ? 'Bảo mật & Phân quyền: Cấp quyền 3 tầng RBAC hoạt động' : 'Security: 3-tier RBAC active')
+                        }}
+                      >
+                        <ShieldCheck style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                        <span>{t('Quản trị phân quyền & Bảo mật', 'Access Control')}</span>
+                      </button>
+                    </>
+                  )}
 
                   <div style={{ height: 1, background: 'var(--line)', margin: '4px 0' }} />
 
@@ -714,7 +759,7 @@ export default function FitPulseApp() {
           )}
 
           {role === 'instructor' && currentUser.role === 'instructor' && (
-            <InstructorView sessions={sessions} showToast={showToast} user={currentUser} isVi={isVi} />
+            <InstructorView sessions={sessions} bookedSessions={bookedSessions} showToast={showToast} user={currentUser} isVi={isVi} />
           )}
 
           {role === 'admin' && currentUser.role === 'admin' && (
@@ -1890,97 +1935,358 @@ function MemberProfileView({
 /* ==========================================================================
    INSTRUCTOR VIEW
    ========================================================================== */
-function InstructorView({ sessions, showToast, user, isVi }: { sessions: Session[]; showToast: (m: string) => void; user: User; isVi: boolean }) {
-  const [checked, setChecked] = useState<number[]>([1, 2])
-  const [selectedClass, setSelectedClass] = useState(sessions[0])
-  const roster = [
-    { name: 'Jordan Davis', initials: 'JD', time: 'Yesterday, 18:42', status: checked.includes(1) },
-    { name: 'Sofia Patel', initials: 'SP', time: 'Yesterday, 17:08', status: checked.includes(2) },
-    { name: 'Marcus Lee', initials: 'ML', time: 'Yesterday, 16:54', status: checked.includes(3) },
-    { name: 'Emma Wilson', initials: 'EW', time: 'Yesterday, 16:21', status: checked.includes(4) }
-  ]
+const DAY_DATE_MAP: Record<string, { vi: string; en: string }> = {
+  Mon: { vi: 'Thứ Hai, ngày 14 tháng 10 năm 2026', en: 'Monday, October 14, 2026' },
+  Tue: { vi: 'Thứ Ba, ngày 15 tháng 10 năm 2026', en: 'Tuesday, October 15, 2026' },
+  Wed: { vi: 'Thứ Tư, ngày 16 tháng 10 năm 2026', en: 'Wednesday, October 16, 2026' },
+  Thu: { vi: 'Thứ Năm, ngày 17 tháng 10 năm 2026', en: 'Thursday, October 17, 2026' },
+  Fri: { vi: 'Thứ Sáu, ngày 18 tháng 10 năm 2026', en: 'Friday, October 18, 2026' },
+  Sat: { vi: 'Thứ Bảy, ngày 19 tháng 10 năm 2026', en: 'Saturday, October 19, 2026' },
+  Sun: { vi: 'Chủ Nhật, ngày 20 tháng 10 năm 2026', en: 'Sunday, October 20, 2026' },
+}
+
+const POOL_OF_STUDENTS = [
+  { name: 'Jordan Davis', initials: 'JD', avatarClass: 'avatar-lime' },
+  { name: 'Sofia Patel', initials: 'SP', avatarClass: 'avatar-1' },
+  { name: 'Marcus Lee', initials: 'ML', avatarClass: 'avatar-2' },
+  { name: 'Emma Wilson', initials: 'EW', avatarClass: 'avatar-3' },
+  { name: 'Liam Nguyen', initials: 'LN', avatarClass: 'avatar-lime' },
+  { name: 'Chloe Taylor', initials: 'CT', avatarClass: 'avatar-2' },
+  { name: 'Ethan Chen', initials: 'EC', avatarClass: 'avatar-1' },
+  { name: 'Ava Rossi', initials: 'AR', avatarClass: 'avatar-3' },
+]
+
+function InstructorView({
+  sessions,
+  bookedSessions = [],
+  showToast,
+  user,
+  isVi,
+}: {
+  sessions: Session[]
+  bookedSessions?: BookedSession[]
+  showToast: (m: string) => void
+  user: User
+  isVi: boolean
+}) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const [activeDay, setActiveDay] = useState('Mon')
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
+  const [checkedMap, setCheckedMap] = useState<Record<number, number[]>>({ 1: [1, 2], 4: [1] })
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [classNotes, setClassNotes] = useState<Record<number, string>>({
+    1: isVi ? 'Lưu ý học viên Jordan Davis cần điều chỉnh lò xo nhẹ hơn do căng cơ.' : 'Jordan Davis needs lighter spring setting due to muscle tension.'
+  })
+  const [noteInput, setNoteInput] = useState('')
+
+  // 1. Classes for this instructor on the chosen day, strictly sorted chronologically
+  const dayClasses = useMemo(() => {
+    return sessions
+      .filter(s => (s.instructor === user.name || (user.name === 'Maya Chen' && s.instructor === 'Maya Chen')) && s.day === activeDay)
+      .sort((a, b) => a.time.localeCompare(b.time))
+  }, [sessions, user.name, activeDay])
+
+  // Active selected class (fallback to first class of the day if none selected)
+  const activeClass = dayClasses.find(s => s.id === selectedClassId) || dayClasses[0] || null
+
+  // Total daily statistics
+  const totalParticipants = useMemo(() => {
+    return dayClasses.reduce((sum, s) => sum + s.booked, 0)
+  }, [dayClasses])
+
+  // Next up class calculation
+  const nextClass = dayClasses.length > 0 ? dayClasses[0] : null
+
+  // 2. Generate dynamic roster for the selected class matching booked count
+  const classRoster = useMemo(() => {
+    if (!activeClass) return []
+
+    const rosterList: { id: number; name: string; initials: string; avatarClass: string; time: string }[] = []
+
+    // If Jordan Davis booked this session, put them first
+    const memberBooked = bookedSessions.some(b => b.sessionId === activeClass.id && b.status === 'confirmed')
+    if (memberBooked) {
+      rosterList.push({
+        id: 1,
+        name: 'Jordan Davis',
+        initials: 'JD',
+        avatarClass: 'avatar-lime',
+        time: isVi ? 'Hôm qua, 18:42' : 'Yesterday, 18:42',
+      })
+    }
+
+    // Fill with pool students up to activeClass.booked
+    let poolIndex = memberBooked ? 1 : 0
+    let studentIdCounter = memberBooked ? 2 : 1
+    const times = [
+      isVi ? 'Hôm qua, 17:08' : 'Yesterday, 17:08',
+      isVi ? 'Hôm qua, 16:54' : 'Yesterday, 16:54',
+      isVi ? 'Hôm qua, 16:21' : 'Yesterday, 16:21',
+      isVi ? 'Hôm qua, 15:40' : 'Yesterday, 15:40',
+      isVi ? 'Hôm nay, 06:15' : 'Today, 06:15',
+      isVi ? 'Hôm nay, 06:30' : 'Today, 06:30',
+    ]
+
+    while (rosterList.length < activeClass.booked && poolIndex < POOL_OF_STUDENTS.length) {
+      const student = POOL_OF_STUDENTS[poolIndex]
+      if (student.name !== 'Jordan Davis' || !memberBooked) {
+        rosterList.push({
+          id: studentIdCounter,
+          name: student.name,
+          initials: student.initials,
+          avatarClass: student.avatarClass,
+          time: times[(studentIdCounter - 1) % times.length],
+        })
+        studentIdCounter++
+      }
+      poolIndex++
+    }
+
+    return rosterList
+  }, [activeClass, bookedSessions, isVi])
+
+  // Current checked student IDs for active class
+  const currentChecked = (activeClass && checkedMap[activeClass.id]) || [1, 2]
+
+  const toggleCheck = (studentId: number, studentName: string) => {
+    if (!activeClass) return
+    const isCurrentlyChecked = currentChecked.includes(studentId)
+    const newChecked = isCurrentlyChecked
+      ? currentChecked.filter(id => id !== studentId)
+      : [...currentChecked, studentId]
+
+    setCheckedMap(prev => ({ ...prev, [activeClass.id]: newChecked }))
+    showToast(isCurrentlyChecked
+      ? `${studentName} ${isVi ? 'chuyển sang vắng mặt' : 'marked as absent'}.`
+      : `${studentName} ${isVi ? 'đã điểm danh thành công' : 'checked in'}.`
+    )
+  }
+
+  const checkAll = () => {
+    if (!activeClass) return
+    const allIds = classRoster.map(s => s.id)
+    setCheckedMap(prev => ({ ...prev, [activeClass.id]: allIds }))
+    showToast(isVi ? `Đã điểm danh toàn bộ ${allIds.length} học viên lớp ${getSessionTitle(activeClass, isVi)}!` : `All ${allIds.length} students checked in!`)
+  }
+
+  const handleOpenNoteModal = () => {
+    if (activeClass) {
+      setNoteInput(classNotes[activeClass.id] || '')
+      setShowNoteModal(true)
+    }
+  }
+
+  const handleSaveNote = () => {
+    if (!activeClass) return
+    setClassNotes(prev => ({ ...prev, [activeClass.id]: noteInput.trim() }))
+    setShowNoteModal(false)
+    showToast(isVi ? 'Đã lưu ghi chú buổi học thành công!' : 'Class note saved successfully!')
+  }
+
+  const dateLabel = DAY_DATE_MAP[activeDay] ? (isVi ? DAY_DATE_MAP[activeDay].vi : DAY_DATE_MAP[activeDay].en) : ''
 
   return (
     <>
       <PageHeader
-        eyebrow={isVi ? 'Thứ Ba, ngày 15 tháng 10 năm 2026' : 'Tuesday, October 15, 2026'}
+        eyebrow={dateLabel}
         title={isVi ? 'Trung tâm điều phối Huấn luyện viên' : 'Coach command center.'}
         description={isVi ? `Chào buổi sáng, ${user.name}. Đây là lịch giảng dạy hôm nay của bạn.` : `Good morning, ${user.name}. Here's your teaching schedule.`}
-        action={<button className="button button-primary"><Plus /> {isVi ? 'Thêm ghi chú' : 'Add note'}</button>}
+        action={
+          <button className="button button-primary" onClick={handleOpenNoteModal}>
+            <Plus /> {isVi ? 'Thêm ghi chú' : 'Add note'}
+          </button>
+        }
       />
+
+      {/* Day Selector Tabs for Coach */}
+      <div className="day-tabs" style={{ marginBottom: 22, marginTop: 0, paddingBottom: 14 }}>
+        {days.map((day, idx) => (
+          <button
+            key={day}
+            className={day === activeDay ? 'selected' : ''}
+            onClick={() => { setActiveDay(day); setSelectedClassId(null); }}
+          >
+            <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
+            <strong>{14 + idx}</strong>
+          </button>
+        ))}
+      </div>
+
       <div className="instructor-layout">
         <section className="class-list-panel">
           <div className="section-heading">
             <div>
-              <h2>{isVi ? 'Lịch dạy hôm nay' : "Today's schedule"}</h2>
-              <p>3 {isVi ? 'ca học' : 'classes'} · 21 {isVi ? 'học viên tham gia' : 'total participants'}</p>
+              <h2>{isVi ? 'Lịch dạy trong ngày' : "Day's schedule"}</h2>
+              <p>{dayClasses.length} {isVi ? 'ca học' : 'classes'} · {totalParticipants} {isVi ? 'học viên tham gia' : 'total participants'}</p>
             </div>
           </div>
-          {sessions.filter(s => s.instructor === 'Maya Chen').map(s => (
-            <button
-              key={s.id}
-              className={`class-card ${selectedClass.id === s.id ? 'active' : ''}`}
-              onClick={() => setSelectedClass(s)}
-            >
-              <div className={`discipline-icon ${s.color}`}>
-                {s.discipline === 'Pilates' ? <Target /> : <Activity />}
-              </div>
-              <div>
-                <strong>{getSessionTitle(s, isVi)}</strong>
-                <span>{s.time} · {formatRoom(s.room, isVi)}</span>
-              </div>
-              <div className="class-count">
-                <strong>{s.booked}/{s.capacity}</strong>
-                <span>{isVi ? 'đã đặt' : 'booked'}</span>
-              </div>
-              <ChevronRight />
-            </button>
-          ))}
-          <div className="next-up">
-            <span className="eyebrow">{isVi ? 'CA TIẾP THEO' : 'NEXT UP'}</span>
-            <strong>{isVi ? 'Pilates Cơ lõi & Kiểm soát' : 'Core & Control'}</strong>
-            <p>{isVi ? 'Bắt đầu sau 2h 14m · Phòng Reformer' : 'Starts in 2h 14m · Reformer Studio'}</p>
-          </div>
+
+          {dayClasses.length === 0 ? (
+            <div className="empty-state" style={{ padding: '35px 15px' }}>
+              <Clock3 style={{ width: 28, height: 28, color: 'var(--muted)', margin: '0 auto 10px', display: 'block' }} />
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>
+                {isVi ? 'Không có ca dạy nào trong ngày này.' : 'No teaching sessions on this day.'}
+              </p>
+              <span style={{ fontSize: 10, color: 'var(--muted)' }}>
+                {isVi ? 'Thời gian nghỉ ngơi & phục hồi thể lực.' : 'Rest & recovery day.'}
+              </span>
+            </div>
+          ) : (
+            dayClasses.map(s => {
+              const isSelected = activeClass?.id === s.id
+              return (
+                <button
+                  key={s.id}
+                  className={`class-card ${isSelected ? 'active' : ''}`}
+                  onClick={() => setSelectedClassId(s.id)}
+                >
+                  <div className={`discipline-icon ${s.color}`}>
+                    {s.discipline === 'Pilates' ? <Target /> : <Activity />}
+                  </div>
+                  <div>
+                    <strong>{getSessionTitle(s, isVi)}</strong>
+                    <span>{s.time} · {formatRoom(s.room, isVi)}</span>
+                  </div>
+                  <div className="class-count">
+                    <strong>{s.booked}/{s.capacity}</strong>
+                    <span>{isVi ? 'đã đặt' : 'booked'}</span>
+                  </div>
+                  <ChevronRight />
+                </button>
+              )
+            })
+          )}
+
+          {nextClass && (
+            <div className="next-up">
+              <span className="eyebrow">{isVi ? 'CA TIẾP THEO TRONG NGÀY' : 'NEXT UP TODAY'}</span>
+              <strong>{getSessionTitle(nextClass, isVi)}</strong>
+              <p>{nextClass.time} · {formatRoom(nextClass.room, isVi)} ({nextClass.duration})</p>
+            </div>
+          )}
         </section>
 
         <section className="roster-panel">
-          <div className="section-heading">
-            <div>
-              <div className="eyebrow accent-eyebrow">{isVi ? 'DANH SÁCH HỌC VIÊN' : 'LIVE ROSTER'}</div>
-              <h2>{getSessionTitle(selectedClass, isVi)}</h2>
-              <p>{selectedClass.time} · {formatRoom(selectedClass.room, isVi)}</p>
-            </div>
-            <Chip tone="green"><span className="pulse-dot" /> {selectedClass.booked} {isVi ? 'đã đặt' : 'booked'}</Chip>
-          </div>
-
-          <div className="roster-progress">
-            <span>{isVi ? 'Tiến độ điểm danh' : 'Attendance'}</span>
-            <strong>{checked.length} / {roster.length} {isVi ? 'đã có mặt' : 'checked in'}</strong>
-            <div className="progress"><i style={{ width: `${(checked.length / roster.length) * 100}%` }} /></div>
-          </div>
-
-          <div className="roster-list">
-            {roster.map((person, index) => (
-              <div className="roster-row" key={person.name}>
-                <div className={`avatar avatar-${index}`}>{person.initials}</div>
-                <div className="roster-name">
-                  <strong>{person.name}</strong>
-                  <span>{isVi ? 'Đã đặt' : 'Booked'} {person.time}</span>
+          {activeClass ? (
+            <>
+              <div className="section-heading">
+                <div>
+                  <div className="eyebrow accent-eyebrow">{isVi ? 'DANH SÁCH HỌC VIÊN' : 'LIVE ROSTER'}</div>
+                  <h2>{getSessionTitle(activeClass, isVi)}</h2>
+                  <p>{activeClass.time} · {formatRoom(activeClass.room, isVi)}</p>
                 </div>
-                <button
-                  className={`attendance ${person.status ? 'present' : ''}`}
-                  onClick={() => {
-                    setChecked(old => old.includes(index + 1) ? old.filter(i => i !== index + 1) : [...old, index + 1])
-                    showToast(person.status ? `${person.name} ${isVi ? 'chuyển sang vắng mặt' : 'marked as no-show'}.` : `${person.name} ${isVi ? 'đã điểm danh thành công' : 'checked in'}.`)
-                  }}
-                >
-                  {person.status ? <><Check /> {isVi ? 'Đã điểm danh' : 'Checked in'}</> : (isVi ? 'Điểm danh' : 'Check in')}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    className="button button-ghost"
+                    onClick={checkAll}
+                    style={{ fontSize: 10, padding: '6px 10px' }}
+                    title={isVi ? 'Điểm danh toàn bộ học viên' : 'Check in all participants'}
+                  >
+                    <Check style={{ width: 12, height: 12 }} /> {isVi ? 'Điểm danh tất cả' : 'Check all'}
+                  </button>
+                  <Chip tone="green"><span className="pulse-dot" /> {activeClass.booked} {isVi ? 'đã đặt' : 'booked'}</Chip>
+                </div>
               </div>
-            ))}
-          </div>
+
+              {classNotes[activeClass.id] && (
+                <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'rgba(198, 243, 107, 0.08)', border: '1px solid rgba(198, 243, 107, 0.25)', fontSize: 11 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--lime)', fontWeight: 700, marginBottom: 4 }}>
+                    <Info style={{ width: 13, height: 13 }} />
+                    <span>{isVi ? 'Lưu ý từ HLV Maya Chen:' : 'Coach Note:'}</span>
+                  </div>
+                  <p style={{ margin: 0, color: 'var(--text)', fontSize: 11, lineHeight: 1.5 }}>
+                    {classNotes[activeClass.id]}
+                  </p>
+                </div>
+              )}
+
+              <div className="roster-progress">
+                <span>{isVi ? 'Tiến độ điểm danh' : 'Attendance'}</span>
+                <strong>{currentChecked.length} / {classRoster.length} {isVi ? 'đã có mặt' : 'checked in'}</strong>
+                <div className="progress">
+                  <i style={{ width: `${classRoster.length > 0 ? (currentChecked.length / classRoster.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+
+              <div className="roster-list">
+                {classRoster.map((person) => {
+                  const isPresent = currentChecked.includes(person.id)
+                  return (
+                    <div className="roster-row" key={person.name}>
+                      <div className={`avatar ${person.avatarClass}`}>{person.initials}</div>
+                      <div className="roster-name">
+                        <strong>{person.name}</strong>
+                        <span>{isVi ? 'Đã đặt' : 'Booked'} {person.time}</span>
+                      </div>
+                      <button
+                        className={`attendance ${isPresent ? 'present' : ''}`}
+                        onClick={() => toggleCheck(person.id, person.name)}
+                      >
+                        {isPresent ? <><Check /> {isVi ? 'Đã điểm danh' : 'Checked in'}</> : (isVi ? 'Điểm danh' : 'Check in')}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="empty-state" style={{ padding: '60px 20px' }}>
+              <Users style={{ width: 36, height: 36, color: 'var(--muted)', margin: '0 auto 12px', display: 'block' }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
+                {isVi ? 'Chưa có lớp học được chọn' : 'No class selected'}
+              </p>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: 11 }}>
+                {isVi ? 'Vui lòng chọn một ca dạy ở danh sách bên trái để quản lý danh sách học viên.' : 'Select a class on the left to manage roster and attendance.'}
+              </p>
+            </div>
+          )}
         </section>
       </div>
+
+      {/* Coach Note Modal */}
+      {showNoteModal && activeClass && (
+        <div className="modal-backdrop" onClick={() => setShowNoteModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ width: 'min(460px, 92vw)' }}>
+            <div className={`modal-banner ${activeClass.color}`}>
+              <button className="icon-button light" onClick={() => setShowNoteModal(false)} aria-label="Close"><X /></button>
+              <div className="modal-discipline">{isVi ? 'Ghi chú buổi tập' : 'Class Session Note'}</div>
+              <h2>{getSessionTitle(activeClass, isVi)}</h2>
+            </div>
+            <div className="modal-content">
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 8 }}>
+                {isVi ? 'Nội dung lưu ý / Thể trạng học viên' : 'Class Note / Trainee Alerts'}
+              </label>
+              <textarea
+                value={noteInput}
+                onChange={e => setNoteInput(e.target.value)}
+                placeholder={isVi ? 'Ví dụ: Học viên Jordan Davis căng cơ chân, học viên Sofia cần lưu ý góc nghiêng cổ chân...' : 'E.g., Jordan Davis muscle tension, check reformer spring settings...'}
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid var(--line)',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  color: 'var(--text)',
+                  fontSize: 12,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  resize: 'vertical',
+                  marginBottom: 16
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button className="button button-ghost" onClick={() => setShowNoteModal(false)}>
+                  {isVi ? 'Hủy' : 'Cancel'}
+                </button>
+                <button className="button button-primary" onClick={handleSaveNote}>
+                  <Check /> {isVi ? 'Lưu ghi chú' : 'Save Note'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
