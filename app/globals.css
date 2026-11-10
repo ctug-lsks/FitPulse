@@ -645,6 +645,7 @@ button:disabled { cursor: not-allowed; }
   display: flex;
   align-items: center;
   gap: 18px;
+  flex-wrap: wrap;
   margin-bottom: 20px;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--line);

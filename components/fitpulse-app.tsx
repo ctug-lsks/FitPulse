@@ -6,6 +6,7 @@ import {
   Dumbbell, Flame, Grid2X2, LayoutDashboard, MapPin, Menu, MoreHorizontal, Play, Plus,
   QrCode, Search, Settings2, Sparkles, Sun, Moon, Target, Users, X, Zap,
   LogOut, Lock, Mail, AlertCircle, Info, Trash2, CalendarCheck, ShieldCheck, CreditCard, Award, UserCheck, RefreshCw,
+  Edit3, Phone,
 } from 'lucide-react'
 
 export type Role = 'member' | 'instructor' | 'admin' | 'simulation'
@@ -22,6 +23,7 @@ export interface User {
   subtitle: { vi: string; en: string }
   plan: string
   planVi?: string
+  phone?: string
 }
 
 export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | 'instructor' | 'admin'; user: User }[] = [
@@ -39,6 +41,7 @@ export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | '
       subtitle: { vi: 'Hội viên hoạt động', en: 'Active member' },
       plan: 'Pro · All access (8 credits remaining)',
       planVi: 'Gói Pro · Toàn quyền truy cập (Còn 8 buổi)',
+      phone: '0901 829 384',
     },
   },
   {
@@ -380,6 +383,27 @@ export default function FitPulseApp() {
     showToast(isVi ? 'Đã đăng xuất thành công' : 'Signed out successfully')
   }
 
+  const handleUpdateUser = (updatedData: Partial<User>) => {
+    if (!currentUser) return
+    let newAvatar = currentUser.avatar
+    if (updatedData.name && updatedData.name.trim()) {
+      const parts = updatedData.name.trim().split(/\s+/)
+      if (parts.length >= 2) {
+        newAvatar = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      } else if (parts.length === 1 && parts[0].length > 0) {
+        newAvatar = parts[0].slice(0, 2).toUpperCase()
+      }
+    }
+    const updatedUser: User = {
+      ...currentUser,
+      ...updatedData,
+      avatar: newAvatar,
+    }
+    setCurrentUser(updatedUser)
+    localStorage.setItem('fitpulse_session', JSON.stringify(updatedUser))
+    showToast(isVi ? 'Đã lưu thay đổi thông tin hồ sơ thành công!' : 'Profile updated successfully!')
+  }
+
   const book = (session: Session) => {
     if (session.booked >= session.capacity) return
     if (creditsLeft <= 0) {
@@ -625,28 +649,16 @@ export default function FitPulseApp() {
                   </div>
 
                   {currentUser.role === 'member' && (
-                    <>
-                      <button
-                        className="user-dropdown-item"
-                        onClick={() => {
-                          setMemberTab('profile')
-                          setUserMenuOpen(false)
-                        }}
-                      >
-                        <QrCode style={{ width: 14, height: 14, color: 'var(--teal)' }} />
-                        <span>{t('Hồ sơ & Thẻ hội viên', 'Profile & Pass')}</span>
-                      </button>
-                      <button
-                        className="user-dropdown-item"
-                        onClick={() => {
-                          setUserMenuOpen(false)
-                          showToast(isVi ? 'Đang tải cài đặt tài khoản...' : 'Opening account settings...')
-                        }}
-                      >
-                        <Settings2 style={{ width: 14, height: 14, color: 'var(--muted)' }} />
-                        <span>{t('Cài đặt tài khoản', 'Account Settings')}</span>
-                      </button>
-                    </>
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setMemberTab('profile')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <QrCode style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                      <span>{t('Hồ sơ & Thẻ hội viên', 'Profile & Pass')}</span>
+                    </button>
                   )}
 
                   {currentUser.role === 'instructor' && (
@@ -753,6 +765,7 @@ export default function FitPulseApp() {
                   isVi={isVi}
                   onGoToSchedule={() => setMemberTab('schedule')}
                   showToast={showToast}
+                  onUpdateUser={handleUpdateUser}
                 />
               )}
             </>
@@ -1738,6 +1751,7 @@ function MemberProfileView({
   isVi,
   onGoToSchedule,
   showToast,
+  onUpdateUser,
 }: {
   user: User
   creditsLeft: number
@@ -1745,8 +1759,40 @@ function MemberProfileView({
   isVi: boolean
   onGoToSchedule: () => void
   showToast: (msg: string) => void
+  onUpdateUser?: (updated: Partial<User>) => void
 }) {
   const [tokenCountdown, setTokenCountdown] = useState(45)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(user.name)
+  const [editEmail, setEditEmail] = useState(user.email)
+  const [editPhone, setEditPhone] = useState(user.phone || '0901 829 384')
+
+  const handleOpenEdit = () => {
+    setEditName(user.name)
+    setEditEmail(user.email)
+    setEditPhone(user.phone || '0901 829 384')
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editName.trim()) {
+      showToast(isVi ? 'Họ và tên không được để trống' : 'Name cannot be empty')
+      return
+    }
+    if (!editEmail.trim() || !editEmail.includes('@')) {
+      showToast(isVi ? 'Vui lòng nhập địa chỉ email hợp lệ' : 'Please enter a valid email address')
+      return
+    }
+    if (onUpdateUser) {
+      onUpdateUser({
+        name: editName.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+      })
+    }
+    setIsEditing(false)
+  }
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1778,14 +1824,29 @@ function MemberProfileView({
               </div>
               <div className="profile-header-info">
                 <h2>{user.name}</h2>
-                <span>{user.email} · Mã hội viên: <strong>FP-2026-8921-JD</strong></span>
-                <div style={{ marginTop: 6 }}>
+                <span>
+                  {user.email} {user.phone ? `· ${user.phone}` : ''} · {isVi ? 'Mã hội viên' : 'Member ID'}: <strong>FP-2026-8921-JD</strong>
+                </span>
+                <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <Chip tone="green">
                     <ShieldCheck style={{ width: 12, height: 12 }} />
                     {isVi ? 'Hội viên chính thức' : 'Verified Member'}
                   </Chip>
+                  {user.phone && (
+                    <span style={{ fontSize: 11, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Phone style={{ width: 11, height: 11 }} /> {user.phone}
+                    </span>
+                  )}
                 </div>
               </div>
+              <button
+                className="button button-ghost"
+                style={{ marginLeft: 'auto', gap: 6, whiteSpace: 'nowrap' }}
+                onClick={handleOpenEdit}
+              >
+                <Edit3 style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                <span>{isVi ? 'Chỉnh sửa hồ sơ' : 'Edit profile'}</span>
+              </button>
             </div>
 
             <div className="section-heading">
@@ -1928,6 +1989,82 @@ function MemberProfileView({
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div className="modal-backdrop" onClick={() => setIsEditing(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ width: 'min(480px, 92vw)' }}>
+            <div className="modal-banner lime">
+              <button className="icon-button light" onClick={() => setIsEditing(false)} aria-label="Close"><X /></button>
+              <div className="modal-discipline">{isVi ? 'Hồ sơ thành viên' : 'Member Profile'}</div>
+              <h2>{isVi ? 'Chỉnh sửa thông tin cá nhân' : 'Edit Personal Details'}</h2>
+            </div>
+            <form onSubmit={handleSaveEdit} className="modal-content">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 22 }}>
+                <div className="form-group">
+                  <label>{isVi ? 'Họ và tên' : 'Full Name'}</label>
+                  <div className="input-with-icon">
+                    <UserCheck />
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      placeholder={isVi ? 'Nhập họ và tên...' : 'Enter your name...'}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isVi ? 'Địa chỉ Email' : 'Email Address'}</label>
+                  <div className="input-with-icon">
+                    <Mail />
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={e => setEditEmail(e.target.value)}
+                      placeholder="name@fitpulse.com"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isVi ? 'Số điện thoại liên hệ' : 'Phone Number'}</label>
+                  <div className="input-with-icon">
+                    <Phone />
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={e => setEditPhone(e.target.value)}
+                      placeholder="0901 829 384"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)', fontSize: 11, color: 'var(--muted)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Info style={{ width: 14, height: 14, color: 'var(--teal)', flexShrink: 0 }} />
+                  <span>
+                    {isVi
+                      ? 'Thông tin cập nhật sẽ được lưu trữ an toàn và đồng bộ tức thì trên toàn hệ thống.'
+                      : 'Updated details will immediately synchronize across the system and persist locally.'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" className="button button-ghost" onClick={() => setIsEditing(false)}>
+                  {isVi ? 'Hủy' : 'Cancel'}
+                </button>
+                <button type="submit" className="button button-primary">
+                  <Check style={{ width: 14, height: 14 }} /> {isVi ? 'Lưu thông tin' : 'Save changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   )
 }
