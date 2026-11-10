@@ -6,12 +6,13 @@ import {
   Dumbbell, Flame, Grid2X2, LayoutDashboard, MapPin, Menu, MoreHorizontal, Play, Plus,
   QrCode, Search, Settings2, Sparkles, Sun, Moon, Target, Users, X, Zap,
   LogOut, Lock, Mail, AlertCircle, Info, Trash2, CalendarCheck, ShieldCheck, CreditCard, Award, UserCheck, RefreshCw,
-  Edit3, Phone,
+  Edit3, Phone, Star,
 } from 'lucide-react'
 
 export type Role = 'member' | 'instructor' | 'admin' | 'simulation'
 export type Discipline = 'Gym' | 'Yoga' | 'Pilates'
 export type MemberTab = 'schedule' | 'my-schedule' | 'profile'
+export type InstructorTab = 'schedule' | 'profile'
 
 export interface User {
   id: string
@@ -24,6 +25,7 @@ export interface User {
   plan: string
   planVi?: string
   phone?: string
+  bio?: string
 }
 
 export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | 'instructor' | 'admin'; user: User }[] = [
@@ -58,6 +60,8 @@ export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | '
       subtitle: { vi: 'HLV Trưởng Pilates & Yoga', en: 'Senior Reformer Coach' },
       plan: 'Certified Instructor',
       planVi: 'Huấn luyện viên Quốc tế',
+      phone: '0912 345 678',
+      bio: 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga.',
     },
   },
   {
@@ -264,6 +268,7 @@ export default function FitPulseApp() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [role, setRole] = useState<Role>('member')
   const [memberTab, setMemberTab] = useState<MemberTab>('schedule')
+  const [instructorTab, setInstructorTab] = useState<InstructorTab>('schedule')
   const [sessions, setSessions] = useState(initialSessions)
   const [bookedSessions, setBookedSessions] = useState<BookedSession[]>(initialBookedSessions)
   const [creditsLeft, setCreditsLeft] = useState(8)
@@ -314,6 +319,10 @@ export default function FitPulseApp() {
       if (savedTab === 'schedule' || savedTab === 'my-schedule' || savedTab === 'profile') {
         setMemberTab(savedTab as MemberTab)
       }
+      const savedInstTab = localStorage.getItem('fitpulse_instructor_tab')
+      if (savedInstTab === 'schedule' || savedInstTab === 'profile') {
+        setInstructorTab(savedInstTab as InstructorTab)
+      }
     } catch (e) {
       console.error('Failed to load local storage state', e)
     }
@@ -350,6 +359,11 @@ export default function FitPulseApp() {
     localStorage.setItem('fitpulse_member_tab', memberTab)
   }, [memberTab, isMounted])
 
+  useEffect(() => {
+    if (!isMounted) return
+    localStorage.setItem('fitpulse_instructor_tab', instructorTab)
+  }, [instructorTab, isMounted])
+
   // Close user dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -371,6 +385,7 @@ export default function FitPulseApp() {
     localStorage.setItem('fitpulse_session', JSON.stringify(user))
     setRole(user.role === 'admin' ? 'admin' : user.role === 'instructor' ? 'instructor' : 'member')
     setMemberTab('schedule')
+    setInstructorTab('schedule')
     showToast(isVi ? `Chào mừng trở lại, ${user.name}` : `Welcome back, ${user.name}`)
   }
 
@@ -380,6 +395,7 @@ export default function FitPulseApp() {
     setUserMenuOpen(false)
     setRole('member')
     setMemberTab('schedule')
+    setInstructorTab('schedule')
     showToast(isVi ? 'Đã đăng xuất thành công' : 'Signed out successfully')
   }
 
@@ -497,7 +513,8 @@ export default function FitPulseApp() {
   ], [isVi])
 
   const instructorNavItems = useMemo(() => [
-    { id: 'instructor', label: isVi ? 'Giao diện huấn luyện viên' : 'Instructor view', icon: Users },
+    { id: 'schedule', label: isVi ? 'Lịch giảng dạy HLV' : 'Teaching schedule', icon: CalendarDays },
+    { id: 'profile', label: isVi ? 'Hồ sơ chuyên môn HLV' : 'Coach profile', icon: Award },
   ], [isVi])
 
   const adminNavItems = useMemo(() => [
@@ -554,12 +571,12 @@ export default function FitPulseApp() {
 
           {currentUser.role === 'instructor' && instructorNavItems.map(item => {
             const Icon = item.icon
-            const isActive = role === item.id
+            const isActive = instructorTab === item.id
             return (
               <button
                 key={item.id}
                 className={`side-link ${isActive ? 'active' : ''}`}
-                onClick={() => { setRole(item.id as Role); setMobileNav(false) }}
+                onClick={() => { setInstructorTab(item.id as InstructorTab); setMobileNav(false) }}
               >
                 <Icon />
                 <span>{item.label}</span>
@@ -666,8 +683,8 @@ export default function FitPulseApp() {
                       <button
                         className="user-dropdown-item"
                         onClick={() => {
+                          setInstructorTab('profile')
                           setUserMenuOpen(false)
-                          showToast(isVi ? 'Hồ sơ chuyên môn: Maya Chen · HLV Trưởng Pilates & Yoga Quốc tế' : 'Coach Profile: Maya Chen · Senior Pilates Coach')
                         }}
                       >
                         <Award style={{ width: 14, height: 14, color: 'var(--violet)' }} />
@@ -676,12 +693,12 @@ export default function FitPulseApp() {
                       <button
                         className="user-dropdown-item"
                         onClick={() => {
+                          setInstructorTab('schedule')
                           setUserMenuOpen(false)
-                          showToast(isVi ? 'Cài đặt ca dạy khả dụng: 07:00 - 19:30' : 'Availability schedule: 07:00 - 19:30')
                         }}
                       >
-                        <Clock3 style={{ width: 14, height: 14, color: 'var(--teal)' }} />
-                        <span>{t('Lịch dạy khả dụng', 'Teaching Availability')}</span>
+                        <CalendarDays style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                        <span>{t('Lịch giảng dạy HLV', 'Teaching Schedule')}</span>
                       </button>
                     </>
                   )}
@@ -772,7 +789,28 @@ export default function FitPulseApp() {
           )}
 
           {role === 'instructor' && currentUser.role === 'instructor' && (
-            <InstructorView sessions={sessions} bookedSessions={bookedSessions} showToast={showToast} user={currentUser} isVi={isVi} />
+            <>
+              {instructorTab === 'schedule' && (
+                <InstructorView
+                  sessions={sessions}
+                  bookedSessions={bookedSessions}
+                  showToast={showToast}
+                  user={currentUser}
+                  isVi={isVi}
+                  onGoToProfile={() => setInstructorTab('profile')}
+                />
+              )}
+              {instructorTab === 'profile' && (
+                <InstructorProfileView
+                  user={currentUser}
+                  sessions={sessions}
+                  isVi={isVi}
+                  onGoToSchedule={() => setInstructorTab('schedule')}
+                  showToast={showToast}
+                  onUpdateUser={handleUpdateUser}
+                />
+              )}
+            </>
           )}
 
           {role === 'admin' && currentUser.role === 'admin' && (
@@ -1037,6 +1075,57 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; 
   )
 }
 
+/* Shared Date & Week Navigation Helpers */
+function getDayDate(offset: number, dayIndex: number) {
+  const baseMonday = new Date(2026, 9, 14)
+  const targetDate = new Date(baseMonday)
+  targetDate.setDate(baseMonday.getDate() + offset * 7 + dayIndex)
+  return targetDate
+}
+
+function getWeekRange(offset: number, isVi: boolean) {
+  const baseMonday = new Date(2026, 9, 14)
+  const monday = new Date(baseMonday)
+  monday.setDate(baseMonday.getDate() + offset * 7)
+
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  const mMonth = monday.getMonth() + 1
+  const sMonth = sunday.getMonth() + 1
+  const sYear = sunday.getFullYear()
+
+  if (isVi) {
+    if (mMonth === sMonth) {
+      return `Tuần ${monday.getDate()} — ${sunday.getDate()} tháng ${sMonth}, ${sYear}`
+    }
+    return `Tuần ${monday.getDate()}/${mMonth} — ${sunday.getDate()}/${sMonth}, ${sYear}`
+  } else {
+    const mStr = monday.toLocaleString('en-US', { month: 'short' })
+    const sStr = sunday.toLocaleString('en-US', { month: 'short' })
+    if (mMonth === sMonth) {
+      return `Week of ${mStr} ${monday.getDate()} — ${sunday.getDate()}, ${sYear}`
+    }
+    return `Week of ${mStr} ${monday.getDate()} — ${sStr} ${sunday.getDate()}, ${sYear}`
+  }
+}
+
+function getFullDayDateLabel(offset: number, dayIndex: number, isVi: boolean) {
+  const targetDate = getDayDate(offset, dayIndex)
+  const daysVi = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật']
+  const daysEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const dayName = isVi ? daysVi[dayIndex] : daysEn[dayIndex]
+  const d = targetDate.getDate()
+  const m = targetDate.getMonth() + 1
+  const y = targetDate.getFullYear()
+  if (isVi) {
+    return `${dayName}, ngày ${d} tháng ${m} năm ${y}`
+  } else {
+    const monthName = targetDate.toLocaleString('en-US', { month: 'long' })
+    return `${dayName}, ${monthName} ${d}, ${y}`
+  }
+}
+
 /* ==========================================================================
    PAGE 1: MEMBER STUDIO EXPLORE & BOOKING (MEMBER VIEW)
    ========================================================================== */
@@ -1116,40 +1205,6 @@ function MemberView({
   const [weekOffset, setWeekOffset] = useState(0)
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-  function getWeekRange(offset: number, isVi: boolean) {
-    const baseMonday = new Date(2026, 9, 14)
-    const monday = new Date(baseMonday)
-    monday.setDate(baseMonday.getDate() + offset * 7)
-
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-
-    const mMonth = monday.getMonth() + 1
-    const sMonth = sunday.getMonth() + 1
-    const sYear = sunday.getFullYear()
-
-    if (isVi) {
-      if (mMonth === sMonth) {
-        return `Tuần ${monday.getDate()} — ${sunday.getDate()} tháng ${sMonth}, ${sYear}`
-      }
-      return `Tuần ${monday.getDate()}/${mMonth} — ${sunday.getDate()}/${sMonth}, ${sYear}`
-    } else {
-      const mStr = monday.toLocaleString('en-US', { month: 'short' })
-      const sStr = sunday.toLocaleString('en-US', { month: 'short' })
-      if (mMonth === sMonth) {
-        return `Week of ${mStr} ${monday.getDate()} — ${sunday.getDate()}, ${sYear}`
-      }
-      return `Week of ${mStr} ${monday.getDate()} — ${sStr} ${sunday.getDate()}, ${sYear}`
-    }
-  }
-
-  function getDayDate(offset: number, dayIndex: number) {
-    const baseMonday = new Date(2026, 9, 14)
-    const targetDate = new Date(baseMonday)
-    targetDate.setDate(baseMonday.getDate() + offset * 7 + dayIndex)
-    return targetDate
-  }
 
   // Multi-dimensional filtering: Day + Multi-choice Disciplines + Multi-choice Time Slots + Search Query
   const filtered = useMemo(() => {
@@ -2111,14 +2166,17 @@ function InstructorView({
   showToast,
   user,
   isVi,
+  onGoToProfile,
 }: {
   sessions: Session[]
   bookedSessions?: BookedSession[]
   showToast: (m: string) => void
   user: User
   isVi: boolean
+  onGoToProfile?: () => void
 }) {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const [weekOffset, setWeekOffset] = useState(0)
   const [activeDay, setActiveDay] = useState('Mon')
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
   const [checkedMap, setCheckedMap] = useState<Record<number, number[]>>({ 1: [1, 2], 4: [1] })
@@ -2232,7 +2290,8 @@ function InstructorView({
     showToast(isVi ? 'Đã lưu ghi chú buổi học thành công!' : 'Class note saved successfully!')
   }
 
-  const dateLabel = DAY_DATE_MAP[activeDay] ? (isVi ? DAY_DATE_MAP[activeDay].vi : DAY_DATE_MAP[activeDay].en) : ''
+  const activeDayIdx = days.indexOf(activeDay)
+  const dateLabel = getFullDayDateLabel(weekOffset, activeDayIdx >= 0 ? activeDayIdx : 0, isVi)
 
   return (
     <>
@@ -2241,24 +2300,69 @@ function InstructorView({
         title={isVi ? 'Trung tâm điều phối Huấn luyện viên' : 'Coach command center.'}
         description={isVi ? `Chào buổi sáng, ${user.name}. Đây là lịch giảng dạy hôm nay của bạn.` : `Good morning, ${user.name}. Here's your teaching schedule.`}
         action={
-          <button className="button button-primary" onClick={handleOpenNoteModal}>
-            <Plus /> {isVi ? 'Thêm ghi chú' : 'Add note'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button className="button button-primary" onClick={handleOpenNoteModal}>
+              <Plus /> {isVi ? 'Thêm ghi chú' : 'Add note'}
+            </button>
+          </div>
         }
       />
 
-      {/* Day Selector Tabs for Coach */}
-      <div className="day-tabs" style={{ marginBottom: 22, marginTop: 0, paddingBottom: 14 }}>
-        {days.map((day, idx) => (
-          <button
-            key={day}
-            className={day === activeDay ? 'selected' : ''}
-            onClick={() => { setActiveDay(day); setSelectedClassId(null); }}
-          >
-            <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
-            <strong>{14 + idx}</strong>
-          </button>
-        ))}
+      {/* Week Navigation Header Bar */}
+      <div className="section-heading" style={{ marginBottom: 10, marginTop: 4 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>
+            {getWeekRange(weekOffset, isVi)}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="button button-ghost"
+          onClick={() => { setWeekOffset(0); setActiveDay('Mon'); setSelectedClassId(null); }}
+          title={isVi ? 'Trở về tuần hiện tại' : 'Jump to current week'}
+        >
+          <CalendarDays /> {isVi ? 'Tuần này' : 'This week'}
+        </button>
+      </div>
+
+      {/* Day Selector Tabs with Left/Right Arrows for Coach */}
+      <div className="day-tabs-row" style={{ marginBottom: 22, marginTop: 0 }}>
+        <button
+          type="button"
+          className="week-nav-arrow-btn"
+          onClick={() => setWeekOffset(w => w - 1)}
+          title={isVi ? 'Tuần trước' : 'Previous week'}
+          aria-label="Previous week"
+        >
+          <ChevronLeft style={{ width: 16, height: 16 }} />
+        </button>
+
+        <div className="day-tabs">
+          {days.map((day, idx) => {
+            const dateObj = getDayDate(weekOffset, idx)
+            return (
+              <button
+                key={day}
+                type="button"
+                className={day === activeDay ? 'selected' : ''}
+                onClick={() => { setActiveDay(day); setSelectedClassId(null); }}
+              >
+                <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
+                <strong>{dateObj.getDate()}</strong>
+              </button>
+            )
+          })}
+        </div>
+
+        <button
+          type="button"
+          className="week-nav-arrow-btn"
+          onClick={() => setWeekOffset(w => w + 1)}
+          title={isVi ? 'Tuần sau' : 'Next week'}
+          aria-label="Next week"
+        >
+          <ChevronRight style={{ width: 16, height: 16 }} />
+        </button>
       </div>
 
       <div className="instructor-layout">
@@ -2433,6 +2537,406 @@ function InstructorView({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/* ==========================================================================
+   INSTRUCTOR PROFILE VIEW (COACH DETAILED CREDENTIALS & PERKS)
+   ========================================================================== */
+function InstructorProfileView({
+  user,
+  sessions,
+  isVi,
+  onGoToSchedule,
+  showToast,
+  onUpdateUser,
+}: {
+  user: User
+  sessions: Session[]
+  isVi: boolean
+  onGoToSchedule: () => void
+  showToast: (msg: string) => void
+  onUpdateUser?: (updated: Partial<User>) => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(user.name)
+  const [editEmail, setEditEmail] = useState(user.email)
+  const [editPhone, setEditPhone] = useState(user.phone || '0912 345 678')
+  const [editBio, setEditBio] = useState(
+    user.bio ||
+      (isVi
+        ? 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga.'
+        : 'Over 10 years of experience in movement education and rehabilitation. Specializes in spinal alignment, diaphragmatic breathwork, and core control.')
+  )
+
+  const handleOpenEdit = () => {
+    setEditName(user.name)
+    setEditEmail(user.email)
+    setEditPhone(user.phone || '0912 345 678')
+    setEditBio(
+      user.bio ||
+        (isVi
+          ? 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga.'
+          : 'Over 10 years of experience in movement education and rehabilitation. Specializes in spinal alignment, diaphragmatic breathwork, and core control.')
+    )
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editName.trim()) {
+      showToast(isVi ? 'Họ và tên không được để trống' : 'Name cannot be empty')
+      return
+    }
+    if (!editEmail.trim() || !editEmail.includes('@')) {
+      showToast(isVi ? 'Vui lòng nhập địa chỉ email hợp lệ' : 'Please enter a valid email address')
+      return
+    }
+    if (onUpdateUser) {
+      onUpdateUser({
+        name: editName.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+        bio: editBio.trim(),
+      })
+    }
+    setIsEditing(false)
+  }
+
+  const coachClasses = useMemo(() => {
+    return sessions.filter(s => s.instructor === user.name || (user.name === 'Maya Chen' && s.instructor === 'Maya Chen'))
+  }, [sessions, user.name])
+
+  return (
+    <>
+      <PageHeader
+        eyebrow={isVi ? 'HỒ SƠ CHUYÊN MÔN & BẰNG CẤP HLV' : 'COACH PROFILE & CERTIFICATIONS'}
+        title={isVi ? 'Hồ sơ Huấn luyện viên Trưởng.' : 'Master Instructor Profile.'}
+        description={isVi ? 'Thông tin chứng chỉ quốc tế, năng lực đào tạo chuyên sâu và hiệu suất giảng dạy tại FitPulse.' : 'International certifications, specialized teaching qualifications, and studio performance.'}
+        action={
+          <button className="button button-primary" onClick={onGoToSchedule}>
+            <CalendarDays /> {isVi ? 'Xem lịch dạy' : 'Teaching schedule'}
+          </button>
+        }
+      />
+
+      <div className="profile-grid-layout">
+        {/* Left Column: Bio, Certifications, Specialties & Assigned Sessions */}
+        <div>
+          <div className="detail-card">
+            <div className="profile-header-strip">
+              <div className={`avatar avatar-large ${user.avatarColor}`} style={{ width: 54, height: 54, fontSize: 16 }}>
+                {user.avatar}
+              </div>
+              <div className="profile-header-info">
+                <h2>{user.name}</h2>
+                <span>
+                  {user.email} · {user.phone || '0912 345 678'} · {isVi ? 'Mã HLV' : 'Staff ID'}: <strong>FP-COACH-04</strong>
+                </span>
+                <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Chip tone="violet">
+                    <Award style={{ width: 12, height: 12 }} />
+                    {user.subtitle ? (isVi ? user.subtitle.vi : user.subtitle.en) : (isVi ? 'HLV Trưởng Pilates & Yoga' : 'Head Coach')}
+                  </Chip>
+                  <Chip tone="green">
+                    <ShieldCheck style={{ width: 12, height: 12 }} />
+                    {isVi ? 'Đã kiểm duyệt PMA & Yoga Alliance' : 'Verified PMA & Yoga Alliance'}
+                  </Chip>
+                </div>
+              </div>
+              <button
+                className="button button-ghost"
+                style={{ marginLeft: 'auto', gap: 6, whiteSpace: 'nowrap' }}
+                onClick={handleOpenEdit}
+              >
+                <Edit3 style={{ width: 14, height: 14, color: 'var(--teal)' }} />
+                <span>{isVi ? 'Chỉnh sửa hồ sơ' : 'Edit profile'}</span>
+              </button>
+            </div>
+
+            <div style={{ marginTop: 20 }}>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>{isVi ? 'TIỂU SỬ & PHƯƠNG PHÁP HUẤN LUYỆN' : 'BIOGRAPHY & COACHING PHILOSOPHY'}</div>
+              <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, margin: 0 }}>
+                {user.bio ||
+                  (isVi
+                    ? 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga.'
+                    : 'Over 10 years of experience in movement education and rehabilitation. Specializes in spinal alignment, diaphragmatic breathwork, and core control.')}
+              </p>
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+              <div className="eyebrow" style={{ marginBottom: 12 }}>{isVi ? 'BẰNG CẤP & CHỨNG CHỈ QUỐC TẾ' : 'ACCREDITED CERTIFICATIONS'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+                {[
+                  {
+                    title: 'PMA-CPT® Certified Pilates Teacher',
+                    issuer: isVi ? 'Pilates Method Alliance (Hoa Kỳ) · Hiệu lực đến 2028' : 'Pilates Method Alliance (USA) · Valid through 2028',
+                    tag: 'Pilates Master',
+                    tone: 'violet' as const,
+                  },
+                  {
+                    title: 'RYT® 500 Yoga Alliance Registered',
+                    issuer: isVi ? 'Yoga Alliance International (Rishikesh, Ấn Độ)' : 'Yoga Alliance International (Rishikesh, India)',
+                    tag: 'Yoga Master',
+                    tone: 'amber' as const,
+                  },
+                  {
+                    title: 'FMS Level 2 Functional Movement Screen',
+                    issuer: isVi ? 'Đánh giá chuyển động & phòng ngừa chấn thương' : 'Movement screen & injury risk mitigation',
+                    tag: 'Biomechanics',
+                    tone: 'green' as const,
+                  },
+                  {
+                    title: 'Pre & Postnatal Pilates Specialist',
+                    issuer: isVi ? 'Chuyên gia phục hồi cơ sàn chậu & cột sống sau sinh' : 'Core & pelvic floor postpartum recovery',
+                    tag: 'Specialist',
+                    tone: 'neutral' as const,
+                  },
+                ].map((cert, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      padding: 14,
+                      borderRadius: 8,
+                      background: 'rgba(255, 255, 255, .03)',
+                      border: '1px solid var(--line)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <strong style={{ fontSize: 12, color: 'var(--text)' }}>{cert.title}</strong>
+                      <Chip tone={cert.tone}>{cert.tag}</Chip>
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block' }}>{cert.issuer}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+              <div className="eyebrow" style={{ marginBottom: 10 }}>{isVi ? 'BỘ MÔN CHUYÊN TRÁCH' : 'CORE SPECIALTIES'}</div>
+              <div className="perks-grid">
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? 'Pilates Reformer Thấu cảm' : 'Intuitive Reformer Pilates'}</span>
+                </div>
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? 'Pilates Thể lực Cao & Core' : 'Athletic Reformer & Core'}</span>
+                </div>
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? 'Vinyasa Flow Yoga Khí huyết' : 'Vitality Flow Yoga'}</span>
+                </div>
+                <div className="perk-item">
+                  <Check /> <span>{isVi ? 'Phục hồi tư thế & Giảm đau lưng' : 'Spinal Alignment & Posture Rehab'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Assigned Classes List */}
+          <div className="detail-card">
+            <div className="section-heading">
+              <div>
+                <h2>{isVi ? 'Các ca học phụ trách trong tuần' : 'Assigned recurring studio sessions'}</h2>
+                <p>{coachClasses.length} {isVi ? 'ca học đang hoạt động trên hệ thống' : 'active weekly classes'}</p>
+              </div>
+              <button className="button button-ghost" onClick={onGoToSchedule}>
+                <CalendarDays /> {isVi ? 'Mở lịch điều phối' : 'View in calendar'}
+              </button>
+            </div>
+
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{isVi ? 'Thứ' : 'Day'}</th>
+                    <th>{isVi ? 'Giờ học' : 'Time'}</th>
+                    <th>{isVi ? 'Tên ca học' : 'Class Title'}</th>
+                    <th>{isVi ? 'Bộ môn' : 'Discipline'}</th>
+                    <th>{isVi ? 'Phòng tập' : 'Studio Room'}</th>
+                    <th>{isVi ? 'Sức chứa' : 'Capacity'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coachClasses.map((item, idx) => (
+                    <tr key={idx}>
+                      <td><strong>{isVi ? DAY_LABELS_SHORT[item.day] : item.day}</strong></td>
+                      <td>{item.time}</td>
+                      <td><strong>{getSessionTitle(item, isVi)}</strong></td>
+                      <td>
+                        <span className={`chip chip-${item.discipline === 'Pilates' ? 'violet' : item.discipline === 'Yoga' ? 'amber' : 'green'}`}>
+                          {item.discipline}
+                        </span>
+                      </td>
+                      <td>{formatRoom(item.room, isVi)}</td>
+                      <td><Chip tone="green">{item.booked} / {item.capacity} {isVi ? 'chỗ' : 'slots'}</Chip></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Performance KPIs & Staff ID Badge */}
+        <div>
+          {/* Performance KPI Card */}
+          <div className="detail-card">
+            <div className="eyebrow" style={{ marginBottom: 8 }}>{isVi ? 'CHỈ SỐ GIẢNG DẠY' : 'TEACHING KPI'}</div>
+            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text)' }}>
+              {isVi ? 'Hiệu suất chuyên môn' : 'Performance Overview'}
+            </h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
+              <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Đánh giá học viên' : 'Student Rating'}</span>
+                <strong style={{ fontSize: 16, color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <Star style={{ width: 14, height: 14, fill: 'currentColor' }} /> 4.96 <small style={{ fontSize: 10, color: 'var(--muted)' }}>(184)</small>
+                </strong>
+              </div>
+              <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Giờ dạy tích lũy' : 'Teaching Hours'}</span>
+                <strong style={{ fontSize: 16, color: 'var(--teal)', display: 'block', marginTop: 4 }}>1,280+ {isVi ? 'giờ' : 'hrs'}</strong>
+              </div>
+              <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Học viên đã kèm' : 'Total Students'}</span>
+                <strong style={{ fontSize: 16, color: 'var(--text)', display: 'block', marginTop: 4 }}>360+ {isVi ? 'người' : 'trainees'}</strong>
+              </div>
+              <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Đúng giờ & hoàn thành' : 'On-time Rate'}</span>
+                <strong style={{ fontSize: 16, color: 'var(--lime)', display: 'block', marginTop: 4 }}>99.8%</strong>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)', marginBottom: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                <span style={{ color: 'var(--muted)' }}>{isVi ? 'Phòng tập thường trực' : 'Primary Studios'}</span>
+                <strong style={{ color: 'var(--text)' }}>Reformer 1 & Zen Room</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                <span style={{ color: 'var(--muted)' }}>{isVi ? 'Tình trạng chứng chỉ' : 'Certification Status'}</span>
+                <span style={{ color: 'var(--teal)', fontWeight: 700 }}>{isVi ? 'Đang hiệu lực (2028)' : 'Active (thru 2028)'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Instructor Staff Card */}
+          <div className="detail-card" style={{ textAlign: 'center' }}>
+            <div className="eyebrow" style={{ marginBottom: 8 }}>{isVi ? 'THẺ HUẤN LUYỆN VIÊN FITPULSE' : 'FITPULSE INSTRUCTOR PASS'}</div>
+            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text)' }}>
+              {isVi ? 'Thẻ định danh HLV' : 'Digital Staff ID'}
+            </h2>
+
+            <div className="qr-box" style={{ width: 200, height: 200, margin: '0 auto 16px', padding: 18 }}>
+              <div className="qr-pattern" style={{ width: 140, height: 140 }}>
+                <QrCode style={{ width: 130, height: 130 }} />
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)', marginBottom: 18, textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                <span style={{ color: 'var(--muted)' }}>{isVi ? 'Mã định danh HLV' : 'Staff Barcode'}</span>
+                <strong style={{ color: 'var(--text)', fontFamily: 'monospace' }}>FP-COACH-04-MC</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                <span style={{ color: 'var(--muted)' }}>{isVi ? 'Cấp độ phân quyền' : 'Security Level'}</span>
+                <span style={{ color: 'var(--violet)', fontWeight: 700 }}>{isVi ? 'HLV Cấp 3 (Toàn quyền Studio)' : 'Tier 3 (Master Coach)'}</span>
+              </div>
+            </div>
+
+            <button className="button button-primary full-width" onClick={onGoToSchedule}>
+              <CalendarDays /> {isVi ? 'Vào lịch giảng dạy hôm nay' : 'Go to Teaching Schedule'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Coach Profile Modal */}
+      {isEditing && (
+        <div className="modal-backdrop" onClick={() => setIsEditing(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ width: 'min(500px, 92vw)' }}>
+            <div className="modal-banner violet">
+              <button className="icon-button light" onClick={() => setIsEditing(false)} aria-label="Close"><X /></button>
+              <div className="modal-discipline">{isVi ? 'Hồ sơ chuyên môn' : 'Coach Credentials'}</div>
+              <h2>{isVi ? 'Chỉnh sửa thông tin Huấn luyện viên' : 'Edit Coach Profile'}</h2>
+            </div>
+            <form onSubmit={handleSaveEdit} className="modal-content">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 22 }}>
+                <div className="form-group">
+                  <label>{isVi ? 'Họ và tên HLV' : 'Full Name'}</label>
+                  <div className="input-with-icon">
+                    <UserCheck />
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      placeholder="Maya Chen"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isVi ? 'Địa chỉ Email' : 'Email Address'}</label>
+                  <div className="input-with-icon">
+                    <Mail />
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={e => setEditEmail(e.target.value)}
+                      placeholder="maya@fitpulse.com"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isVi ? 'Số điện thoại liên hệ' : 'Phone Number'}</label>
+                  <div className="input-with-icon">
+                    <Phone />
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={e => setEditPhone(e.target.value)}
+                      placeholder="0912 345 678"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isVi ? 'Tiểu sử & Phương pháp huấn luyện' : 'Coaching Bio & Philosophy'}</label>
+                  <textarea
+                    rows={4}
+                    value={editBio}
+                    onChange={e => setEditBio(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--line)',
+                      background: 'rgba(255, 255, 255, .04)',
+                      color: 'var(--text)',
+                      fontSize: 12,
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" className="button button-ghost" onClick={() => setIsEditing(false)}>
+                  {isVi ? 'Hủy' : 'Cancel'}
+                </button>
+                <button type="submit" className="button button-primary">
+                  <Check style={{ width: 14, height: 14 }} /> {isVi ? 'Lưu thông tin' : 'Save changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
