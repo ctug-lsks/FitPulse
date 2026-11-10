@@ -997,11 +997,17 @@ function MemberView({
   onGoToMySchedule?: () => void
 }) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [timeFilter, setTimeFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening'>('all')
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<('morning' | 'afternoon' | 'evening')[]>([])
+
+  const toggleTimeSlot = (slot: 'morning' | 'afternoon' | 'evening') => {
+    setSelectedTimeSlots(prev =>
+      prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot]
+    )
+  }
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-  // Multi-dimensional filtering: Day + Discipline + Time of Day + Search Query
+  // Multi-dimensional filtering: Day + Discipline + Multi-choice Time Slots + Search Query
   const filtered = useMemo(() => {
     return sessions.filter(s => {
       // 1. Day filter
@@ -1010,12 +1016,13 @@ function MemberView({
       // 2. Discipline filter
       if (filter !== 'All' && s.discipline !== filter) return false
 
-      // 3. Time of Day filter
-      const [hStr, mStr] = s.time.split(':')
-      const hour = parseInt(hStr, 10) + (parseInt(mStr || '0', 10) / 60)
-      if (timeFilter === 'morning' && hour >= 12) return false
-      if (timeFilter === 'afternoon' && (hour < 12 || hour >= 17.5)) return false
-      if (timeFilter === 'evening' && hour < 17.5) return false
+      // 3. Multi-choice Time of Day filter
+      if (selectedTimeSlots.length > 0 && selectedTimeSlots.length < 3) {
+        const [hStr, mStr] = s.time.split(':')
+        const hour = parseInt(hStr, 10) + (parseInt(mStr || '0', 10) / 60)
+        const slot = hour < 12 ? 'morning' : (hour < 17.5 ? 'afternoon' : 'evening')
+        if (!selectedTimeSlots.includes(slot)) return false
+      }
 
       // 4. Live Search filter (matches class title, coach, room, or discipline)
       if (searchQuery.trim()) {
@@ -1030,7 +1037,7 @@ function MemberView({
 
       return true
     })
-  }, [sessions, activeDay, filter, timeFilter, searchQuery])
+  }, [sessions, activeDay, filter, selectedTimeSlots, searchQuery])
   const copy = isVi ? {
     eyebrow: `Chào buổi sáng, ${user.name.split(' ')[0]}`,
     title: 'Tuần này của bạn, luôn chuyển động.',
@@ -1141,22 +1148,34 @@ function MemberView({
                 ))}
               </div>
 
-              {/* Time Slot Pills */}
+              {/* Multi-choice Time Slot Pills (No detailed hours, supports selecting multiple slots) */}
               <div className="time-filter-row">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTimeSlots([])}
+                  className={`filter-pill filter-pill-time ${selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3 ? 'selected' : ''}`}
+                >
+                  {isVi ? 'Cả ngày' : 'All day'}
+                </button>
+
                 {([
-                  { id: 'all', label: isVi ? 'Cả ngày' : 'All hours' },
-                  { id: 'morning', label: isVi ? '🌅 Sáng (<12h)' : '🌅 Morning (<12h)' },
-                  { id: 'afternoon', label: isVi ? '☀️ Chiều (12h-17h30)' : '☀️ Afternoon (12-5:30pm)' },
-                  { id: 'evening', label: isVi ? '🌙 Tối (>17h30)' : '🌙 Evening (>5:30pm)' },
-                ] as const).map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => setTimeFilter(item.id)}
-                    className={`filter-pill filter-pill-time ${timeFilter === item.id ? 'selected' : ''}`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+                  { id: 'morning' as const, label: isVi ? '🌅 Sáng' : '🌅 Morning' },
+                  { id: 'afternoon' as const, label: isVi ? '☀️ Chiều' : '☀️ Afternoon' },
+                  { id: 'evening' as const, label: isVi ? '🌙 Tối' : '🌙 Evening' },
+                ]).map(item => {
+                  const isSelected = selectedTimeSlots.includes(item.id)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleTimeSlot(item.id)}
+                      className={`filter-pill filter-pill-time ${isSelected ? 'selected' : ''}`}
+                      title={isVi ? `Bấm để chọn / bỏ chọn khung giờ ${item.label}` : `Click to toggle ${item.label}`}
+                    >
+                      {item.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -1188,7 +1207,7 @@ function MemberView({
                 </p>
                 <button
                   className="button button-ghost"
-                  onClick={() => { setSearchQuery(''); setFilter('All'); setTimeFilter('all') }}
+                  onClick={() => { setSearchQuery(''); setFilter('All'); setSelectedTimeSlots([]) }}
                   style={{ fontSize: 11, padding: '7px 15px' }}
                 >
                   <RefreshCw style={{ width: 12, height: 12 }} /> {isVi ? 'Đặt lại bộ lọc' : 'Reset filters'}
