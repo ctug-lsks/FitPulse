@@ -57,7 +57,7 @@ export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | '
       role: 'instructor',
       avatar: 'MC',
       avatarColor: 'avatar-1',
-      subtitle: { vi: 'HLV Trưởng Pilates & Yoga', en: 'Senior Reformer Coach' },
+      subtitle: { vi: 'HLV Pilates & Yoga', en: 'Pilates & Yoga Coach' },
       plan: 'Certified Instructor',
       planVi: 'Huấn luyện viên Quốc tế',
       phone: '0912 345 678',
@@ -2663,7 +2663,7 @@ function InstructorProfileView({
     <>
       <PageHeader
         eyebrow={isVi ? 'HỒ SƠ CHUYÊN MÔN & BẰNG CẤP HLV' : 'COACH PROFILE & CERTIFICATIONS'}
-        title={isVi ? 'Hồ sơ Huấn luyện viên Trưởng' : 'Master Instructor Profile'}
+        title={isVi ? 'Hồ sơ Huấn luyện viên' : 'Instructor Profile'}
         description={isVi ? 'Thông tin chứng chỉ quốc tế, năng lực đào tạo chuyên sâu và hiệu suất giảng dạy tại FitPulse.' : 'International certifications, specialized teaching qualifications, and studio performance.'}
         action={
           <button className="button button-primary" onClick={onGoToSchedule}>
@@ -2688,7 +2688,7 @@ function InstructorProfileView({
                 <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <Chip tone="violet">
                     <Award style={{ width: 12, height: 12 }} />
-                    {user.subtitle ? (isVi ? user.subtitle.vi : user.subtitle.en) : (isVi ? 'HLV Trưởng Pilates & Yoga' : 'Senior Reformer Coach')}
+                    {user.subtitle ? (isVi ? user.subtitle.vi : user.subtitle.en) : (isVi ? 'HLV Pilates & Yoga' : 'Pilates & Yoga Coach')}
                   </Chip>
                   <Chip tone="green">
                     <ShieldCheck style={{ width: 12, height: 12 }} />
