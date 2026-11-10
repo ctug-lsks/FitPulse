@@ -997,24 +997,57 @@ function MemberView({
   onGoToMySchedule?: () => void
 }) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedDisciplines, setSelectedDisciplines] = useState<Discipline[]>([])
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<('morning' | 'afternoon' | 'evening')[]>([])
 
+  const toggleDiscipline = (d: Discipline) => {
+    setSelectedDisciplines(prev => {
+      let next: Discipline[]
+      if (prev.length === 0) {
+        next = [d]
+      } else if (prev.includes(d)) {
+        next = prev.filter(x => x !== d)
+      } else {
+        next = [...prev, d]
+      }
+      if (next.length === 3) next = []
+      if (setFilter) setFilter(next.length === 1 ? next[0] : 'All')
+      return next
+    })
+  }
+
+  const selectAllDisciplines = () => {
+    setSelectedDisciplines([])
+    if (setFilter) setFilter('All')
+  }
+
   const toggleTimeSlot = (slot: 'morning' | 'afternoon' | 'evening') => {
-    setSelectedTimeSlots(prev =>
-      prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot]
-    )
+    setSelectedTimeSlots(prev => {
+      let next: ('morning' | 'afternoon' | 'evening')[]
+      if (prev.length === 0) {
+        next = [slot]
+      } else if (prev.includes(slot)) {
+        next = prev.filter(s => s !== slot)
+      } else {
+        next = [...prev, slot]
+      }
+      if (next.length === 3) next = []
+      return next
+    })
   }
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-  // Multi-dimensional filtering: Day + Discipline + Multi-choice Time Slots + Search Query
+  // Multi-dimensional filtering: Day + Multi-choice Disciplines + Multi-choice Time Slots + Search Query
   const filtered = useMemo(() => {
     return sessions.filter(s => {
       // 1. Day filter
       if (s.day !== activeDay) return false
 
-      // 2. Discipline filter
-      if (filter !== 'All' && s.discipline !== filter) return false
+      // 2. Multi-choice Discipline filter
+      if (selectedDisciplines.length > 0 && selectedDisciplines.length < 3) {
+        if (!selectedDisciplines.includes(s.discipline)) return false
+      }
 
       // 3. Multi-choice Time of Day filter
       if (selectedTimeSlots.length > 0 && selectedTimeSlots.length < 3) {
@@ -1037,7 +1070,7 @@ function MemberView({
 
       return true
     })
-  }, [sessions, activeDay, filter, selectedTimeSlots, searchQuery])
+  }, [sessions, activeDay, selectedDisciplines, selectedTimeSlots, searchQuery])
   const copy = isVi ? {
     eyebrow: `Chào buổi sáng, ${user.name.split(' ')[0]}`,
     title: 'Tuần này của bạn, luôn chuyển động.',
@@ -1133,49 +1166,84 @@ function MemberView({
               )}
             </div>
 
-            {/* Filter Rows: Disciplines & Time Slots */}
+            {/* Checkbox Filter Controls: Multi-choice Disciplines & Time Slots */}
             <div className="filter-controls-row">
-              {/* Discipline Pills */}
-              <div className="filter-row">
-                {disciplinePills.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => setFilter(item.id)}
-                    className={`filter-pill ${filter === item.id ? 'selected' : ''}`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+              {/* Discipline Checkboxes */}
+              <div className="filter-group">
+                <span className="filter-group-title">
+                  {isVi ? 'Bộ môn:' : 'Discipline:'}
+                </span>
+                <div className="filter-checkbox-group">
+                  <label className={`filter-checkbox-pill ${selectedDisciplines.length === 0 || selectedDisciplines.length === 3 ? 'checked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={selectedDisciplines.length === 0 || selectedDisciplines.length === 3}
+                      onChange={selectAllDisciplines}
+                    />
+                    <span className="checkbox-indicator">
+                      {(selectedDisciplines.length === 0 || selectedDisciplines.length === 3) && <Check />}
+                    </span>
+                    <span className="checkbox-text">{copy.allDisciplines}</span>
+                  </label>
+
+                  {(['Gym', 'Pilates', 'Yoga'] as Discipline[]).map(d => {
+                    const isChecked = selectedDisciplines.length > 0 && selectedDisciplines.includes(d)
+                    return (
+                      <label key={d} className={`filter-checkbox-pill ${isChecked ? 'checked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleDiscipline(d)}
+                        />
+                        <span className="checkbox-indicator">
+                          {isChecked && <Check />}
+                        </span>
+                        <span className="checkbox-text">{d}</span>
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
 
-              {/* Multi-choice Time Slot Pills (No detailed hours, supports selecting multiple slots) */}
-              <div className="time-filter-row">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTimeSlots([])}
-                  className={`filter-pill filter-pill-time ${selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3 ? 'selected' : ''}`}
-                >
-                  {isVi ? 'Cả ngày' : 'All day'}
-                </button>
+              {/* Time Slot Checkboxes */}
+              <div className="filter-group">
+                <span className="filter-group-title">
+                  {isVi ? 'Khung giờ:' : 'Time of day:'}
+                </span>
+                <div className="filter-checkbox-group">
+                  <label className={`filter-checkbox-pill ${selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3 ? 'checked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3}
+                      onChange={() => setSelectedTimeSlots([])}
+                    />
+                    <span className="checkbox-indicator">
+                      {(selectedTimeSlots.length === 0 || selectedTimeSlots.length === 3) && <Check />}
+                    </span>
+                    <span className="checkbox-text">{isVi ? 'Cả ngày' : 'All day'}</span>
+                  </label>
 
-                {([
-                  { id: 'morning' as const, label: isVi ? '🌅 Sáng' : '🌅 Morning' },
-                  { id: 'afternoon' as const, label: isVi ? '☀️ Chiều' : '☀️ Afternoon' },
-                  { id: 'evening' as const, label: isVi ? '🌙 Tối' : '🌙 Evening' },
-                ]).map(item => {
-                  const isSelected = selectedTimeSlots.includes(item.id)
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleTimeSlot(item.id)}
-                      className={`filter-pill filter-pill-time ${isSelected ? 'selected' : ''}`}
-                      title={isVi ? `Bấm để chọn / bỏ chọn khung giờ ${item.label}` : `Click to toggle ${item.label}`}
-                    >
-                      {item.label}
-                    </button>
-                  )
-                })}
+                  {([
+                    { id: 'morning' as const, label: isVi ? '🌅 Sáng' : '🌅 Morning' },
+                    { id: 'afternoon' as const, label: isVi ? '☀️ Chiều' : '☀️ Afternoon' },
+                    { id: 'evening' as const, label: isVi ? '🌙 Tối' : '🌙 Evening' },
+                  ]).map(item => {
+                    const isChecked = selectedTimeSlots.length > 0 && selectedTimeSlots.includes(item.id)
+                    return (
+                      <label key={item.id} className={`filter-checkbox-pill ${isChecked ? 'checked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleTimeSlot(item.id)}
+                        />
+                        <span className="checkbox-indicator">
+                          {isChecked && <Check />}
+                        </span>
+                        <span className="checkbox-text">{item.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -1207,7 +1275,7 @@ function MemberView({
                 </p>
                 <button
                   className="button button-ghost"
-                  onClick={() => { setSearchQuery(''); setFilter('All'); setSelectedTimeSlots([]) }}
+                  onClick={() => { setSearchQuery(''); setSelectedDisciplines([]); setSelectedTimeSlots([]) }}
                   style={{ fontSize: 11, padding: '7px 15px' }}
                 >
                   <RefreshCw style={{ width: 12, height: 12 }} /> {isVi ? 'Đặt lại bộ lọc' : 'Reset filters'}
