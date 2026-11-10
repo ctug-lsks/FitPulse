@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react'
 import {
-  Activity, ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, ChevronDown, CircleCheck, Clock3,
+  Activity, ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, ChevronLeft, ChevronDown, CircleCheck, Clock3,
   Dumbbell, Flame, Grid2X2, LayoutDashboard, MapPin, Menu, MoreHorizontal, Play, Plus,
   QrCode, Search, Settings2, Sparkles, Sun, Moon, Target, Users, X, Zap,
   LogOut, Lock, Mail, AlertCircle, Info, Trash2, CalendarCheck, ShieldCheck, CreditCard, Award, UserCheck, RefreshCw,
@@ -88,6 +88,7 @@ type Session = {
   capacity: number
   color: string
   day: string
+  date?: string
 }
 
 export interface BookedSession {
@@ -397,7 +398,7 @@ export default function FitPulseApp() {
       room: session.room,
       time: session.time,
       day: session.day,
-      date: '15/10/2026',
+      date: session.date || '15/10/2026',
       color: session.color,
       status: 'confirmed',
     }
@@ -429,7 +430,7 @@ export default function FitPulseApp() {
       room: session.room,
       time: session.time,
       day: session.day,
-      date: '15/10/2026',
+      date: session.date || '15/10/2026',
       color: session.color,
       status: 'waitlist',
       waitlistPosition: 1,
@@ -1036,7 +1037,43 @@ function MemberView({
     })
   }
 
+  const [weekOffset, setWeekOffset] = useState(0)
+
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+  function getWeekRange(offset: number, isVi: boolean) {
+    const baseMonday = new Date(2026, 9, 14)
+    const monday = new Date(baseMonday)
+    monday.setDate(baseMonday.getDate() + offset * 7)
+
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+
+    const mMonth = monday.getMonth() + 1
+    const sMonth = sunday.getMonth() + 1
+    const sYear = sunday.getFullYear()
+
+    if (isVi) {
+      if (mMonth === sMonth) {
+        return `Tuần ${monday.getDate()} — ${sunday.getDate()} tháng ${sMonth}, ${sYear}`
+      }
+      return `Tuần ${monday.getDate()}/${mMonth} — ${sunday.getDate()}/${sMonth}, ${sYear}`
+    } else {
+      const mStr = monday.toLocaleString('en-US', { month: 'short' })
+      const sStr = sunday.toLocaleString('en-US', { month: 'short' })
+      if (mMonth === sMonth) {
+        return `Week of ${mStr} ${monday.getDate()} — ${sunday.getDate()}, ${sYear}`
+      }
+      return `Week of ${mStr} ${monday.getDate()} — ${sStr} ${sunday.getDate()}, ${sYear}`
+    }
+  }
+
+  function getDayDate(offset: number, dayIndex: number) {
+    const baseMonday = new Date(2026, 9, 14)
+    const targetDate = new Date(baseMonday)
+    targetDate.setDate(baseMonday.getDate() + offset * 7 + dayIndex)
+    return targetDate
+  }
 
   // Multi-dimensional filtering: Day + Multi-choice Disciplines + Multi-choice Time Slots + Search Query
   const filtered = useMemo(() => {
@@ -1127,24 +1164,61 @@ function MemberView({
           <div className="section-heading">
             <div>
               <h2>{copy.schedule}</h2>
-              <p>{copy.week}</p>
+              <p>{getWeekRange(weekOffset, isVi)}</p>
             </div>
-            <button
-              className="button button-ghost"
-              onClick={() => setActiveDay('Mon')}
-              title={isVi ? 'Trở về ngày đầu tuần' : 'Jump to start of week'}
-            >
-              <CalendarDays /> {copy.thisWeek}
-            </button>
+            <div className="week-nav-controls">
+              <button
+                type="button"
+                className="week-nav-btn"
+                onClick={() => setWeekOffset(w => w - 1)}
+                title={isVi ? 'Tuần trước' : 'Previous week'}
+                aria-label="Previous week"
+              >
+                <ChevronLeft style={{ width: 14, height: 14 }} />
+              </button>
+
+              <button
+                type="button"
+                className={`button button-ghost week-nav-current ${weekOffset === 0 ? 'is-current' : ''}`}
+                onClick={() => { setWeekOffset(0); setActiveDay('Mon'); }}
+                title={isVi ? 'Trở về tuần hiện tại' : 'Return to current week'}
+              >
+                <CalendarDays style={{ width: 13, height: 13 }} />
+                <span>{copy.thisWeek}</span>
+                {weekOffset !== 0 && (
+                  <span className="week-offset-badge">
+                    {weekOffset > 0 ? `+${weekOffset}w` : `${weekOffset}w`}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="week-nav-btn"
+                onClick={() => setWeekOffset(w => w + 1)}
+                title={isVi ? 'Tuần sau' : 'Next week'}
+                aria-label="Next week"
+              >
+                <ChevronRight style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
           </div>
 
           <div className="day-tabs">
-            {days.map(day => (
-              <button key={day} className={day === activeDay ? 'selected' : ''} onClick={() => setActiveDay(day)}>
-                <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
-                <strong>{14 + days.indexOf(day)}</strong>
-              </button>
-            ))}
+            {days.map((day, idx) => {
+              const dateObj = getDayDate(weekOffset, idx)
+              return (
+                <button
+                  key={day}
+                  className={day === activeDay ? 'selected' : ''}
+                  onClick={() => setActiveDay(day)}
+                  title={`${isVi ? DAY_LABELS_SHORT[day] : day}, ${dateObj.getDate()}/${dateObj.getMonth() + 1}`}
+                >
+                  <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
+                  <strong>{dateObj.getDate()}</strong>
+                </button>
+              )
+            })}
           </div>
 
           {/* Advanced Search & Filtering Suite */}
@@ -1250,12 +1324,17 @@ function MemberView({
 
           <div className="session-list">
             {filtered.map(session => {
+              const dayIdx = days.indexOf(session.day)
+              const targetDate = getDayDate(weekOffset, dayIdx)
+              const dateFormatted = `${String(targetDate.getDate()).padStart(2, '0')}/${String(targetDate.getMonth() + 1).padStart(2, '0')}/${targetDate.getFullYear()}`
+              const sessionWithDate: Session = { ...session, date: dateFormatted }
+
               const isBooked = bookedSessions.some(b => b.sessionId === session.id && b.status === 'confirmed')
               const isWaitlisted = bookedSessions.some(b => b.sessionId === session.id && b.status === 'waitlist')
               return (
                 <SessionRow
-                  key={session.id}
-                  session={session}
+                  key={`${session.id}-${weekOffset}`}
+                  session={sessionWithDate}
                   onSelect={onSelect}
                   onJoinWaitlist={onJoinWaitlist}
                   isVi={isVi}

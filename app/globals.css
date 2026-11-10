@@ -1087,3 +1087,69 @@ button:disabled { cursor: not-allowed; }
 .theme-light .filter-checkbox-pill.checked .checkbox-indicator svg {
   color: #ffffff;
 }
+
+/* ==========================================================================
+   WEEK NAVIGATION CONTROLS
+   ========================================================================== */
+.week-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.week-nav-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.week-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-color: var(--lime);
+  transform: translateY(-1px);
+}
+
+.theme-light .week-nav-btn {
+  background: #ffffff;
+  border-color: rgba(20, 48, 34, 0.2);
+  color: #243d31;
+}
+
+.theme-light .week-nav-btn:hover {
+  background: rgba(30, 80, 56, 0.08);
+  border-color: #4f7416;
+  color: #0d1e16;
+}
+
+.week-nav-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  height: 32px;
+}
+
+.week-offset-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  background: var(--lime);
+  color: #111a18;
+}
+
+.theme-light .week-offset-badge {
+  background: #4f7416;
+  color: #ffffff;
+}
