@@ -614,7 +614,11 @@ export default function FitPulseApp() {
 
           <div className="topbar-context">
             <span className="eyebrow">
-              FITPULSE / {currentUser.role === 'member' ? memberTab.toUpperCase() : role.toUpperCase()}
+              {currentUser.role === 'member'
+                ? `FITPULSE / ${memberTab === 'schedule' ? t('LỊCH STUDIO', 'STUDIO SCHEDULE') : memberTab === 'my-schedule' ? t('LỊCH CỦA BẠN', 'MY SCHEDULE') : t('HỒ SƠ HỘI VIÊN', 'MEMBER PROFILE')}`
+                : currentUser.role === 'instructor'
+                ? `FITPULSE / ${instructorTab === 'schedule' ? t('LỊCH GIẢNG DẠY', 'INSTRUCTOR SCHEDULE') : t('HỒ SƠ CHUYÊN MÔN', 'COACH PROFILE')}`
+                : `FITPULSE / ${t('QUẢN TRỊ VIÊN', 'ADMIN')}`}
             </span>
             <span className="live-status">
               <span className="pulse-dot" /> {t('Hệ thống trực tiếp', 'Live system')}
@@ -660,7 +664,7 @@ export default function FitPulseApp() {
                       <strong>{currentUser.name}</strong>
                       <span>{currentUser.email}</span>
                       <span className={`role-badge-sidebar ${currentUser.role}`} style={{ marginTop: 4 }}>
-                        {currentUser.role === 'member' ? t('Hội viên', 'Member') : currentUser.role === 'instructor' ? t('HLV', 'Instructor') : t('Quản trị viên', 'Admin')}
+                        {currentUser.role === 'member' ? t('Hội viên', 'Member') : currentUser.role === 'instructor' ? t('Huấn luyện viên', 'Instructor') : t('Quản trị viên', 'Admin')}
                       </span>
                     </div>
                   </div>
@@ -2139,14 +2143,29 @@ function MemberProfileView({
 /* ==========================================================================
    INSTRUCTOR VIEW
    ========================================================================== */
-const DAY_DATE_MAP: Record<string, { vi: string; en: string }> = {
-  Mon: { vi: 'Thứ Hai, ngày 14 tháng 10 năm 2026', en: 'Monday, October 14, 2026' },
-  Tue: { vi: 'Thứ Ba, ngày 15 tháng 10 năm 2026', en: 'Tuesday, October 15, 2026' },
-  Wed: { vi: 'Thứ Tư, ngày 16 tháng 10 năm 2026', en: 'Wednesday, October 16, 2026' },
-  Thu: { vi: 'Thứ Năm, ngày 17 tháng 10 năm 2026', en: 'Thursday, October 17, 2026' },
-  Fri: { vi: 'Thứ Sáu, ngày 18 tháng 10 năm 2026', en: 'Friday, October 18, 2026' },
-  Sat: { vi: 'Thứ Bảy, ngày 19 tháng 10 năm 2026', en: 'Saturday, October 19, 2026' },
-  Sun: { vi: 'Chủ Nhật, ngày 20 tháng 10 năm 2026', en: 'Sunday, October 20, 2026' },
+export const DEFAULT_COACH_BIO = {
+  vi: 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga hiện đại.',
+  en: 'Over 10 years of professional experience in functional movement and physical rehabilitation. Emphasizes spinal alignment, diaphragmatic breathwork, and core stability. Combines the discipline of classical Pilates Reformer with dynamic modern Yoga flexibility.',
+}
+
+export const DAY_LABELS_FULL_VI: Record<string, string> = {
+  Mon: 'Thứ Hai',
+  Tue: 'Thứ Ba',
+  Wed: 'Thứ Tư',
+  Thu: 'Thứ Năm',
+  Fri: 'Thứ Sáu',
+  Sat: 'Thứ Bảy',
+  Sun: 'Chủ Nhật',
+}
+
+export const DAY_LABELS_FULL_EN: Record<string, string> = {
+  Mon: 'Monday',
+  Tue: 'Tuesday',
+  Wed: 'Wednesday',
+  Thu: 'Thursday',
+  Fri: 'Friday',
+  Sat: 'Saturday',
+  Sun: 'Sunday',
 }
 
 const POOL_OF_STUDENTS = [
@@ -2181,10 +2200,20 @@ function InstructorView({
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
   const [checkedMap, setCheckedMap] = useState<Record<number, number[]>>({ 1: [1, 2], 4: [1] })
   const [showNoteModal, setShowNoteModal] = useState(false)
-  const [classNotes, setClassNotes] = useState<Record<number, string>>({
-    1: isVi ? 'Lưu ý học viên Jordan Davis cần điều chỉnh lò xo nhẹ hơn do căng cơ.' : 'Jordan Davis needs lighter spring setting due to muscle tension.'
+  const [classNotes, setClassNotes] = useState<Record<number, { vi: string; en: string } | string>>({
+    1: {
+      vi: 'Lưu ý học viên Jordan Davis cần điều chỉnh lò xo nhẹ hơn do căng cơ.',
+      en: 'Jordan Davis needs lighter spring setting due to muscle tension.',
+    },
   })
   const [noteInput, setNoteInput] = useState('')
+
+  const getNoteText = (classId: number) => {
+    const val = classNotes[classId]
+    if (!val) return ''
+    if (typeof val === 'string') return val
+    return isVi ? val.vi : val.en
+  }
 
   // 1. Classes for this instructor on the chosen day, strictly sorted chronologically
   const dayClasses = useMemo(() => {
@@ -2264,8 +2293,8 @@ function InstructorView({
 
     setCheckedMap(prev => ({ ...prev, [activeClass.id]: newChecked }))
     showToast(isCurrentlyChecked
-      ? `${studentName} ${isVi ? 'chuyển sang vắng mặt' : 'marked as absent'}.`
-      : `${studentName} ${isVi ? 'đã điểm danh thành công' : 'checked in'}.`
+      ? (isVi ? `${studentName} đã chuyển sang trạng thái vắng mặt.` : `${studentName} marked as absent.`)
+      : (isVi ? `${studentName} đã điểm danh thành công!` : `${studentName} checked in successfully!`)
     )
   }
 
@@ -2273,12 +2302,15 @@ function InstructorView({
     if (!activeClass) return
     const allIds = classRoster.map(s => s.id)
     setCheckedMap(prev => ({ ...prev, [activeClass.id]: allIds }))
-    showToast(isVi ? `Đã điểm danh toàn bộ ${allIds.length} học viên lớp ${getSessionTitle(activeClass, isVi)}!` : `All ${allIds.length} students checked in!`)
+    showToast(isVi
+      ? `Đã điểm danh toàn bộ ${allIds.length} học viên lớp ${getSessionTitle(activeClass, isVi)}!`
+      : `All ${allIds.length} students in ${getSessionTitle(activeClass, isVi)} checked in successfully!`
+    )
   }
 
   const handleOpenNoteModal = () => {
     if (activeClass) {
-      setNoteInput(classNotes[activeClass.id] || '')
+      setNoteInput(getNoteText(activeClass.id))
       setShowNoteModal(true)
     }
   }
@@ -2287,7 +2319,7 @@ function InstructorView({
     if (!activeClass) return
     setClassNotes(prev => ({ ...prev, [activeClass.id]: noteInput.trim() }))
     setShowNoteModal(false)
-    showToast(isVi ? 'Đã lưu ghi chú buổi học thành công!' : 'Class note saved successfully!')
+    showToast(isVi ? 'Đã lưu ghi chú ca học thành công!' : 'Class session note saved successfully!')
   }
 
   const activeDayIdx = days.indexOf(activeDay)
@@ -2297,12 +2329,17 @@ function InstructorView({
     <>
       <PageHeader
         eyebrow={dateLabel}
-        title={isVi ? 'Trung tâm điều phối Huấn luyện viên' : 'Coach command center.'}
-        description={isVi ? `Chào buổi sáng, ${user.name}. Đây là lịch giảng dạy hôm nay của bạn.` : `Good morning, ${user.name}. Here's your teaching schedule.`}
+        title={isVi ? 'Trung tâm điều phối Huấn luyện viên' : 'Instructor Dispatch Center'}
+        description={isVi ? `Chào buổi sáng, ${user.name}. Đây là lịch giảng dạy hôm nay của bạn.` : `Good morning, ${user.name}. Here is your teaching schedule for today.`}
         action={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {onGoToProfile && (
+              <button className="button button-ghost" onClick={onGoToProfile}>
+                <Award /> {isVi ? 'Hồ sơ chuyên môn' : 'Coach profile'}
+              </button>
+            )}
             <button className="button button-primary" onClick={handleOpenNoteModal}>
-              <Plus /> {isVi ? 'Thêm ghi chú' : 'Add note'}
+              <Plus /> {isVi ? 'Thêm ghi chú ca học' : 'Add session note'}
             </button>
           </div>
         }
@@ -2319,7 +2356,7 @@ function InstructorView({
           type="button"
           className="button button-ghost"
           onClick={() => { setWeekOffset(0); setActiveDay('Mon'); setSelectedClassId(null); }}
-          title={isVi ? 'Trở về tuần hiện tại' : 'Jump to current week'}
+          title={isVi ? 'Trở về tuần hiện tại' : 'Return to current week'}
         >
           <CalendarDays /> {isVi ? 'Tuần này' : 'This week'}
         </button>
@@ -2370,7 +2407,7 @@ function InstructorView({
           <div className="section-heading">
             <div>
               <h2>{isVi ? 'Lịch dạy trong ngày' : "Day's schedule"}</h2>
-              <p>{dayClasses.length} {isVi ? 'ca học' : 'classes'} · {totalParticipants} {isVi ? 'học viên tham gia' : 'total participants'}</p>
+              <p>{dayClasses.length} {isVi ? 'ca học' : dayClasses.length === 1 ? 'class' : 'classes'} · {totalParticipants} {isVi ? 'học viên tham gia' : totalParticipants === 1 ? 'student enrolled' : 'students enrolled'}</p>
             </div>
           </div>
 
@@ -2414,7 +2451,7 @@ function InstructorView({
             <div className="next-up">
               <span className="eyebrow">{isVi ? 'CA TIẾP THEO TRONG NGÀY' : 'NEXT UP TODAY'}</span>
               <strong>{getSessionTitle(nextClass, isVi)}</strong>
-              <p>{nextClass.time} · {formatRoom(nextClass.room, isVi)} ({nextClass.duration})</p>
+              <p>{nextClass.time} · {formatRoom(nextClass.room, isVi)} ({formatDuration(nextClass.duration, isVi)})</p>
             </div>
           )}
         </section>
@@ -2441,21 +2478,21 @@ function InstructorView({
                 </div>
               </div>
 
-              {classNotes[activeClass.id] && (
+              {getNoteText(activeClass.id) && (
                 <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'rgba(198, 243, 107, 0.08)', border: '1px solid rgba(198, 243, 107, 0.25)', fontSize: 11 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--lime)', fontWeight: 700, marginBottom: 4 }}>
                     <Info style={{ width: 13, height: 13 }} />
-                    <span>{isVi ? 'Lưu ý từ HLV Maya Chen:' : 'Coach Note:'}</span>
+                    <span>{isVi ? 'Lưu ý từ HLV Maya Chen:' : 'Instructor Note:'}</span>
                   </div>
                   <p style={{ margin: 0, color: 'var(--text)', fontSize: 11, lineHeight: 1.5 }}>
-                    {classNotes[activeClass.id]}
+                    {getNoteText(activeClass.id)}
                   </p>
                 </div>
               )}
 
               <div className="roster-progress">
-                <span>{isVi ? 'Tiến độ điểm danh' : 'Attendance'}</span>
-                <strong>{currentChecked.length} / {classRoster.length} {isVi ? 'đã có mặt' : 'checked in'}</strong>
+                <span>{isVi ? 'Tiến độ điểm danh' : 'Check-in Progress'}</span>
+                <strong>{currentChecked.length} / {classRoster.length} {isVi ? 'đã có mặt' : 'present'}</strong>
                 <div className="progress">
                   <i style={{ width: `${classRoster.length > 0 ? (currentChecked.length / classRoster.length) * 100 : 0}%` }} />
                 </div>
@@ -2469,7 +2506,7 @@ function InstructorView({
                       <div className={`avatar ${person.avatarClass}`}>{person.initials}</div>
                       <div className="roster-name">
                         <strong>{person.name}</strong>
-                        <span>{isVi ? 'Đã đặt' : 'Booked'} {person.time}</span>
+                        <span>{isVi ? 'Đã đặt' : 'Booked'}: {person.time}</span>
                       </div>
                       <button
                         className={`attendance ${isPresent ? 'present' : ''}`}
@@ -2502,12 +2539,12 @@ function InstructorView({
           <div className="modal" onClick={e => e.stopPropagation()} style={{ width: 'min(460px, 92vw)' }}>
             <div className={`modal-banner ${activeClass.color}`}>
               <button className="icon-button light" onClick={() => setShowNoteModal(false)} aria-label="Close"><X /></button>
-              <div className="modal-discipline">{isVi ? 'Ghi chú buổi tập' : 'Class Session Note'}</div>
+              <div className="modal-discipline">{isVi ? 'Ghi chú ca học' : 'Class Session Note'}</div>
               <h2>{getSessionTitle(activeClass, isVi)}</h2>
             </div>
             <div className="modal-content">
               <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 8 }}>
-                {isVi ? 'Nội dung lưu ý / Thể trạng học viên' : 'Class Note / Trainee Alerts'}
+                {isVi ? 'Nội dung lưu ý / Thể trạng học viên' : 'Session Note / Trainee Alerts'}
               </label>
               <textarea
                 value={noteInput}
@@ -2562,27 +2599,24 @@ function InstructorProfileView({
   showToast: (msg: string) => void
   onUpdateUser?: (updated: Partial<User>) => void
 }) {
+  const isDefaultBio = !user.bio || user.bio === DEFAULT_COACH_BIO.vi || user.bio === DEFAULT_COACH_BIO.en
+  const currentBio = isDefaultBio ? (isVi ? DEFAULT_COACH_BIO.vi : DEFAULT_COACH_BIO.en) : user.bio
+
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(user.name)
   const [editEmail, setEditEmail] = useState(user.email)
   const [editPhone, setEditPhone] = useState(user.phone || '0912 345 678')
-  const [editBio, setEditBio] = useState(
-    user.bio ||
-      (isVi
-        ? 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga.'
-        : 'Over 10 years of experience in movement education and rehabilitation. Specializes in spinal alignment, diaphragmatic breathwork, and core control.')
-  )
+  const [editBio, setEditBio] = useState(currentBio)
+
+  useEffect(() => {
+    setEditBio(currentBio)
+  }, [currentBio])
 
   const handleOpenEdit = () => {
     setEditName(user.name)
     setEditEmail(user.email)
     setEditPhone(user.phone || '0912 345 678')
-    setEditBio(
-      user.bio ||
-        (isVi
-          ? 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga.'
-          : 'Over 10 years of experience in movement education and rehabilitation. Specializes in spinal alignment, diaphragmatic breathwork, and core control.')
-    )
+    setEditBio(currentBio)
     setIsEditing(true)
   }
 
@@ -2615,7 +2649,7 @@ function InstructorProfileView({
     <>
       <PageHeader
         eyebrow={isVi ? 'HỒ SƠ CHUYÊN MÔN & BẰNG CẤP HLV' : 'COACH PROFILE & CERTIFICATIONS'}
-        title={isVi ? 'Hồ sơ Huấn luyện viên Trưởng.' : 'Master Instructor Profile.'}
+        title={isVi ? 'Hồ sơ Huấn luyện viên Trưởng' : 'Master Instructor Profile'}
         description={isVi ? 'Thông tin chứng chỉ quốc tế, năng lực đào tạo chuyên sâu và hiệu suất giảng dạy tại FitPulse.' : 'International certifications, specialized teaching qualifications, and studio performance.'}
         action={
           <button className="button button-primary" onClick={onGoToSchedule}>
@@ -2640,7 +2674,7 @@ function InstructorProfileView({
                 <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <Chip tone="violet">
                     <Award style={{ width: 12, height: 12 }} />
-                    {user.subtitle ? (isVi ? user.subtitle.vi : user.subtitle.en) : (isVi ? 'HLV Trưởng Pilates & Yoga' : 'Head Coach')}
+                    {user.subtitle ? (isVi ? user.subtitle.vi : user.subtitle.en) : (isVi ? 'HLV Trưởng Pilates & Yoga' : 'Senior Reformer Coach')}
                   </Chip>
                   <Chip tone="green">
                     <ShieldCheck style={{ width: 12, height: 12 }} />
@@ -2661,10 +2695,7 @@ function InstructorProfileView({
             <div style={{ marginTop: 20 }}>
               <div className="eyebrow" style={{ marginBottom: 8 }}>{isVi ? 'TIỂU SỬ & PHƯƠNG PHÁP HUẤN LUYỆN' : 'BIOGRAPHY & COACHING PHILOSOPHY'}</div>
               <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, margin: 0 }}>
-                {user.bio ||
-                  (isVi
-                    ? 'Hơn 10 năm kinh nghiệm trong ngành chuyển động cơ thể và hồi phục chức năng. Chú trọng tính chính xác của trục cột sống, kiểm soát hơi thở cơ hoành và tối ưu hóa sức mạnh cơ lõi (Core Control). Kết hợp kỷ luật của Pilates Reformer cổ điển và sự dẻo dai của Yoga.'
-                    : 'Over 10 years of experience in movement education and rehabilitation. Specializes in spinal alignment, diaphragmatic breathwork, and core control.')}
+                {currentBio}
               </p>
             </div>
 
@@ -2675,25 +2706,25 @@ function InstructorProfileView({
                   {
                     title: 'PMA-CPT® Certified Pilates Teacher',
                     issuer: isVi ? 'Pilates Method Alliance (Hoa Kỳ) · Hiệu lực đến 2028' : 'Pilates Method Alliance (USA) · Valid through 2028',
-                    tag: 'Pilates Master',
+                    tag: isVi ? 'Bậc thầy Pilates' : 'Pilates Master',
                     tone: 'violet' as const,
                   },
                   {
                     title: 'RYT® 500 Yoga Alliance Registered',
                     issuer: isVi ? 'Yoga Alliance International (Rishikesh, Ấn Độ)' : 'Yoga Alliance International (Rishikesh, India)',
-                    tag: 'Yoga Master',
+                    tag: isVi ? 'Bậc thầy Yoga' : 'Yoga Master',
                     tone: 'amber' as const,
                   },
                   {
                     title: 'FMS Level 2 Functional Movement Screen',
                     issuer: isVi ? 'Đánh giá chuyển động & phòng ngừa chấn thương' : 'Movement screen & injury risk mitigation',
-                    tag: 'Biomechanics',
+                    tag: isVi ? 'Cơ sinh học' : 'Biomechanics',
                     tone: 'green' as const,
                   },
                   {
                     title: 'Pre & Postnatal Pilates Specialist',
                     issuer: isVi ? 'Chuyên gia phục hồi cơ sàn chậu & cột sống sau sinh' : 'Core & pelvic floor postpartum recovery',
-                    tag: 'Specialist',
+                    tag: isVi ? 'Chuyên gia' : 'Specialist',
                     tone: 'neutral' as const,
                   },
                 ].map((cert, i) => (
@@ -2739,7 +2770,7 @@ function InstructorProfileView({
           <div className="detail-card">
             <div className="section-heading">
               <div>
-                <h2>{isVi ? 'Các ca học phụ trách trong tuần' : 'Assigned recurring studio sessions'}</h2>
+                <h2>{isVi ? 'Các ca học phụ trách trong tuần' : 'Assigned weekly studio sessions'}</h2>
                 <p>{coachClasses.length} {isVi ? 'ca học đang hoạt động trên hệ thống' : 'active weekly classes'}</p>
               </div>
               <button className="button button-ghost" onClick={onGoToSchedule}>
@@ -2762,7 +2793,7 @@ function InstructorProfileView({
                 <tbody>
                   {coachClasses.map((item, idx) => (
                     <tr key={idx}>
-                      <td><strong>{isVi ? DAY_LABELS_SHORT[item.day] : item.day}</strong></td>
+                      <td><strong>{isVi ? DAY_LABELS_FULL_VI[item.day] : DAY_LABELS_FULL_EN[item.day]}</strong></td>
                       <td>{item.time}</td>
                       <td><strong>{getSessionTitle(item, isVi)}</strong></td>
                       <td>
@@ -2793,7 +2824,7 @@ function InstructorProfileView({
               <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
                 <span style={{ fontSize: 10, color: 'var(--muted)', display: 'block' }}>{isVi ? 'Đánh giá học viên' : 'Student Rating'}</span>
                 <strong style={{ fontSize: 16, color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <Star style={{ width: 14, height: 14, fill: 'currentColor' }} /> 4.96 <small style={{ fontSize: 10, color: 'var(--muted)' }}>(184)</small>
+                  <Star style={{ width: 14, height: 14, fill: 'currentColor' }} /> 4.96 <small style={{ fontSize: 10, color: 'var(--muted)' }}>({isVi ? '184 đánh giá' : '184 reviews'})</small>
                 </strong>
               </div>
               <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)' }}>
@@ -2813,7 +2844,7 @@ function InstructorProfileView({
             <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(255, 255, 255, .03)', border: '1px solid var(--line)', marginBottom: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
                 <span style={{ color: 'var(--muted)' }}>{isVi ? 'Phòng tập thường trực' : 'Primary Studios'}</span>
-                <strong style={{ color: 'var(--text)' }}>Reformer 1 & Zen Room</strong>
+                <strong style={{ color: 'var(--text)' }}>{isVi ? 'Phòng Reformer 1 & Phòng Zen' : 'Reformer Studio 1 & Zen Room'}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
                 <span style={{ color: 'var(--muted)' }}>{isVi ? 'Tình trạng chứng chỉ' : 'Certification Status'}</span>
@@ -2912,6 +2943,7 @@ function InstructorProfileView({
                     rows={4}
                     value={editBio}
                     onChange={e => setEditBio(e.target.value)}
+                    placeholder={isVi ? 'Nhập tóm tắt tiểu sử và kinh nghiệm giảng dạy...' : 'Enter your bio and coaching background...'}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
