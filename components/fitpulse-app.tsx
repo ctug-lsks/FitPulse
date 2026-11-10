@@ -508,7 +508,7 @@ export default function FitPulseApp() {
   // If not logged in, render the clean Login View
   if (!currentUser) {
     return (
-      <div className={`app-shell ${lightTheme ? 'theme-light' : ''}`}>
+      <div className={`login-page-root ${lightTheme ? 'theme-light' : ''}`} style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <LoginView
           onLogin={handleLogin}
           lightTheme={lightTheme}
@@ -975,7 +975,11 @@ function LoginView({
             </div>
 
             <div className="demo-accounts-table">
-              <div className="demo-account-row">
+              <div
+                className="demo-account-row"
+                onClick={() => { setEmail('jordan@fitpulse.com'); setPassword('123456') }}
+                title={isVi ? 'Bấm để tự động điền tài khoản Hội viên' : 'Click to autofill Member credentials'}
+              >
                 <div className="demo-role-badge member">
                   <LayoutDashboard style={{ width: 13, height: 13 }} />
                   <span>{t('Hội viên (Member):', 'Member Role:')}</span>
@@ -985,7 +989,11 @@ function LoginView({
                 </div>
               </div>
 
-              <div className="demo-account-row">
+              <div
+                className="demo-account-row"
+                onClick={() => { setEmail('maya@fitpulse.com'); setPassword('123456') }}
+                title={isVi ? 'Bấm để tự động điền tài khoản HLV' : 'Click to autofill Instructor credentials'}
+              >
                 <div className="demo-role-badge instructor">
                   <Users style={{ width: 13, height: 13 }} />
                   <span>{t('Huấn luyện viên (Coach):', 'Instructor Role:')}</span>
@@ -995,7 +1003,11 @@ function LoginView({
                 </div>
               </div>
 
-              <div className="demo-account-row">
+              <div
+                className="demo-account-row"
+                onClick={() => { setEmail('admin@fitpulse.com'); setPassword('123456') }}
+                title={isVi ? 'Bấm để tự động điền tài khoản Quản trị viên' : 'Click to autofill Admin credentials'}
+              >
                 <div className="demo-role-badge admin">
                   <BarChart3 style={{ width: 13, height: 13 }} />
                   <span>{t('Quản trị viên (Admin):', 'Admin Role:')}</span>
