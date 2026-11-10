@@ -256,6 +256,7 @@ function Logo() {
 }
 
 export default function FitPulseApp() {
+  const [isMounted, setIsMounted] = useState(false)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [role, setRole] = useState<Role>('member')
   const [memberTab, setMemberTab] = useState<MemberTab>('schedule')
@@ -275,19 +276,75 @@ export default function FitPulseApp() {
   const isVi = language === 'vi'
   const t = (vi: string, en: string) => isVi ? vi : en
 
-  // Load user from localStorage on client mount
+  // 1. Restore all saved state from localStorage on client mount
   useEffect(() => {
-    const saved = localStorage.getItem('fitpulse_session')
-    if (saved) {
-      try {
+    setIsMounted(true)
+    try {
+      const saved = localStorage.getItem('fitpulse_session')
+      if (saved) {
         const parsed: User = JSON.parse(saved)
         setCurrentUser(parsed)
         setRole(parsed.role === 'admin' ? 'admin' : parsed.role === 'instructor' ? 'instructor' : 'member')
-      } catch (e) {
-        localStorage.removeItem('fitpulse_session')
       }
+      const savedSessions = localStorage.getItem('fitpulse_sessions')
+      if (savedSessions) {
+        setSessions(JSON.parse(savedSessions))
+      }
+      const savedBooked = localStorage.getItem('fitpulse_booked_sessions')
+      if (savedBooked) {
+        setBookedSessions(JSON.parse(savedBooked))
+      }
+      const savedCredits = localStorage.getItem('fitpulse_credits_left')
+      if (savedCredits !== null) {
+        setCreditsLeft(Number(savedCredits))
+      }
+      const savedTheme = localStorage.getItem('fitpulse_theme')
+      if (savedTheme !== null) {
+        setLightTheme(savedTheme === 'light')
+      }
+      const savedLang = localStorage.getItem('fitpulse_lang')
+      if (savedLang === 'vi' || savedLang === 'en') {
+        setLanguage(savedLang)
+      }
+      const savedTab = localStorage.getItem('fitpulse_member_tab')
+      if (savedTab === 'schedule' || savedTab === 'my-schedule' || savedTab === 'profile') {
+        setMemberTab(savedTab as MemberTab)
+      }
+    } catch (e) {
+      console.error('Failed to load local storage state', e)
     }
   }, [])
+
+  // 2. Synchronize state changes to localStorage
+  useEffect(() => {
+    if (!isMounted) return
+    localStorage.setItem('fitpulse_sessions', JSON.stringify(sessions))
+  }, [sessions, isMounted])
+
+  useEffect(() => {
+    if (!isMounted) return
+    localStorage.setItem('fitpulse_booked_sessions', JSON.stringify(bookedSessions))
+  }, [bookedSessions, isMounted])
+
+  useEffect(() => {
+    if (!isMounted) return
+    localStorage.setItem('fitpulse_credits_left', String(creditsLeft))
+  }, [creditsLeft, isMounted])
+
+  useEffect(() => {
+    if (!isMounted) return
+    localStorage.setItem('fitpulse_theme', lightTheme ? 'light' : 'dark')
+  }, [lightTheme, isMounted])
+
+  useEffect(() => {
+    if (!isMounted) return
+    localStorage.setItem('fitpulse_lang', language)
+  }, [language, isMounted])
+
+  useEffect(() => {
+    if (!isMounted) return
+    localStorage.setItem('fitpulse_member_tab', memberTab)
+  }, [memberTab, isMounted])
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -523,9 +580,6 @@ export default function FitPulseApp() {
           </div>
 
           <div className="topbar-actions">
-            <button className="icon-button" title={t('Tìm kiếm', 'Search')}><Search /></button>
-            <button className="icon-button" title={t('Lịch', 'Calendar')}><CalendarDays /></button>
-
             <button
               className="theme-toggle"
               onClick={() => setLightTheme(v => !v)}
@@ -581,6 +635,23 @@ export default function FitPulseApp() {
                       <span>{t('Hồ sơ & Thẻ hội viên', 'Profile & Pass')}</span>
                     </button>
                   )}
+
+                  <button
+                    className="user-dropdown-item"
+                    onClick={() => {
+                      localStorage.removeItem('fitpulse_sessions')
+                      localStorage.removeItem('fitpulse_booked_sessions')
+                      localStorage.removeItem('fitpulse_credits_left')
+                      setSessions(initialSessions)
+                      setBookedSessions(initialBookedSessions)
+                      setCreditsLeft(8)
+                      setUserMenuOpen(false)
+                      showToast(isVi ? 'Đã khôi phục dữ liệu ban đầu!' : 'Reset sample data successfully!')
+                    }}
+                  >
+                    <RefreshCw style={{ width: 14, height: 14, color: 'var(--muted)' }} />
+                    <span>{t('Khôi phục dữ liệu mẫu', 'Reset sample data')}</span>
+                  </button>
 
                   <div style={{ height: 1, background: 'var(--line)', margin: '4px 0' }} />
 
