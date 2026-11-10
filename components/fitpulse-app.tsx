@@ -1177,7 +1177,24 @@ function MemberView({
                 />
               )
             })}
-            {filtered.length === 0 && <div className="empty-state">{copy.empty}</div>}
+            {filtered.length === 0 && (
+              <div className="empty-state" style={{ padding: '42px 20px', textAlign: 'center' }}>
+                <Search style={{ width: 32, height: 32, color: 'var(--muted)', margin: '0 auto 12px', display: 'block' }} />
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
+                  {copy.empty}
+                </p>
+                <p style={{ margin: '0 0 16px', color: 'var(--muted)', fontSize: 11 }}>
+                  {isVi ? 'Không tìm thấy ca tập với bộ lọc hiện tại. Thử xóa tìm kiếm hoặc đổi khung giờ.' : 'No sessions match the current criteria. Try clearing search or changing time filters.'}
+                </p>
+                <button
+                  className="button button-ghost"
+                  onClick={() => { setSearchQuery(''); setFilter('All'); setTimeFilter('all') }}
+                  style={{ fontSize: 11, padding: '7px 15px' }}
+                >
+                  <RefreshCw style={{ width: 12, height: 12 }} /> {isVi ? 'Đặt lại bộ lọc' : 'Reset filters'}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1296,7 +1313,7 @@ function MembershipCard({ user, isVi, creditsLeft, onGoToProfile }: { user: User
       <div className="membership-footer">
         <div>
           <span>{isVi ? 'Số buổi còn' : 'Sessions left'}</span>
-          <strong>0{creditsLeft}</strong>
+          <strong>{creditsLeft < 10 ? `0${creditsLeft}` : creditsLeft}</strong>
         </div>
         <div>
           <span>{isVi ? 'Hạn gia hạn' : 'Renews in'}</span>

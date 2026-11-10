@@ -819,3 +819,142 @@ button:disabled { cursor: not-allowed; }
   border-color: rgba(148, 93, 27, 0.45) !important;
   font-weight: 700;
 }
+
+/* ==========================================================================
+   VISUAL POLISH, MICRO-INTERACTIONS & THEME HARMONY ENHANCEMENTS
+   ========================================================================== */
+/* Light Mode Contrast & Progress Track Harmony */
+.theme-light .capacity-bar,
+.theme-light .progress {
+  background: rgba(20, 48, 34, 0.1);
+}
+.theme-light .topbar {
+  background: rgba(245, 248, 245, 0.9);
+  backdrop-filter: blur(14px);
+  border-bottom-color: rgba(20, 48, 34, 0.12);
+}
+.theme-light .booked-card {
+  background: #ffffff;
+  border-color: rgba(20, 48, 34, 0.14);
+  box-shadow: 0 4px 15px rgba(20, 48, 34, 0.05);
+}
+.theme-light .detail-card {
+  background: #ffffff;
+  border-color: rgba(20, 48, 34, 0.15);
+  box-shadow: 0 8px 24px rgba(20, 48, 34, 0.05);
+}
+
+/* Smooth Progress Bar & Meter Fill Transitions */
+.capacity-bar i,
+.progress i {
+  transition: width 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Interactive Session Rows: Subtle Lift & Shadow */
+.session-row {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.session-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.09);
+}
+.theme-light .session-row:hover {
+  box-shadow: 0 4px 16px rgba(20, 48, 34, 0.08);
+}
+
+/* Day Tab Interactive States */
+.day-tabs button {
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+.day-tabs button:hover:not(.selected) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+.theme-light .day-tabs button:hover:not(.selected) {
+  background: rgba(30, 80, 56, 0.08);
+  color: #0d1e16;
+}
+
+/* Filter Pills Hover States */
+.filter-pill {
+  transition: all 0.16s ease;
+  cursor: pointer;
+}
+.filter-pill:hover:not(.selected) {
+  border-color: rgba(198, 243, 107, 0.3);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.035);
+}
+.theme-light .filter-pill:hover:not(.selected) {
+  border-color: rgba(20, 48, 34, 0.35);
+  background: rgba(30, 80, 56, 0.05);
+  color: #0d1e16;
+}
+
+/* Cards & Surface Micro-interactions */
+.booked-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.booked-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+}
+.theme-light .booked-card:hover {
+  box-shadow: 0 6px 20px rgba(20, 48, 34, 0.09);
+}
+
+.membership-card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+}
+.membership-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+}
+.theme-light .membership-card:hover {
+  box-shadow: 0 16px 38px rgba(20, 48, 34, 0.12);
+}
+
+.kpi-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+.theme-light .kpi-card:hover {
+  box-shadow: 0 10px 25px rgba(20, 48, 34, 0.1);
+}
+
+/* Button Click Feel (Tactile Feedback) */
+.button {
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.button-dark:hover {
+  background: #31423c;
+  color: #ffffff;
+  border-color: var(--lime);
+}
+.theme-light .button-dark:hover {
+  background: #233e31;
+  color: #ffffff;
+  border-color: #233e31;
+}
+
+/* Header Controls Polish */
+.theme-toggle,
+.language-toggle,
+.user-menu-trigger {
+  transition: all 0.18s ease;
+}
+.theme-toggle:hover,
+.language-toggle:hover,
+.user-menu-trigger:hover {
+  transform: translateY(-1px);
+}
+.theme-light .user-menu-trigger:hover {
+  border-color: #4f7416;
+}
