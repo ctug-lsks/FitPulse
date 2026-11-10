@@ -361,7 +361,6 @@ export default function FitPulseApp() {
   const memberNavItems = useMemo(() => [
     { id: 'schedule', label: isVi ? 'Lịch tập Studio' : 'Studio schedule', icon: CalendarDays },
     { id: 'my-schedule', label: isVi ? 'Lịch của bạn' : 'My schedule', icon: Clock3 },
-    { id: 'profile', label: isVi ? 'Hồ sơ & Thẻ hội viên' : 'Profile & Pass', icon: QrCode },
   ], [isVi])
 
   const instructorNavItems = useMemo(() => [
@@ -528,7 +527,7 @@ export default function FitPulseApp() {
                       }}
                     >
                       <QrCode style={{ width: 14, height: 14, color: 'var(--teal)' }} />
-                      <span>{t('Thông tin & Thẻ hội viên', 'Profile & Pass')}</span>
+                      <span>{t('Hồ sơ & Thẻ hội viên', 'Profile & Pass')}</span>
                     </button>
                   )}
 
@@ -903,13 +902,10 @@ function MemberView({
         title={copy.title}
         description={copy.description}
         action={
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="button button-ghost" onClick={onGoToMySchedule}>
-              <Clock3 /> {isVi ? 'Lịch của bạn' : 'My Schedule'}
-            </button>
-            <button className="button button-primary" onClick={onGoToProfile}>
-              <QrCode /> {copy.card}
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Chip tone="green">
+              <span className="pulse-dot" /> {isVi ? 'Gói Pro khả dụng' : 'Pro Active'}
+            </Chip>
           </div>
         }
       />
@@ -921,7 +917,13 @@ function MemberView({
               <h2>{copy.schedule}</h2>
               <p>{copy.week}</p>
             </div>
-            <button className="button button-ghost"><CalendarDays /> {copy.thisWeek}</button>
+            <button
+              className="button button-ghost"
+              onClick={() => setActiveDay('Mon')}
+              title={isVi ? 'Trở về ngày đầu tuần' : 'Jump to start of week'}
+            >
+              <CalendarDays /> {copy.thisWeek}
+            </button>
           </div>
 
           <div className="day-tabs">
@@ -966,7 +968,7 @@ function MemberView({
         <div className="progress-wrap">
           <div className="progress-label">
             <span>{copy.monthly}</span>
-            <strong>{creditsLeft} / 10 sessions</strong>
+            <strong>{creditsLeft} / 10 {isVi ? 'buổi' : 'credits'}</strong>
           </div>
           <div className="progress"><i style={{ width: `${(creditsLeft / 10) * 100}%` }} /></div>
         </div>
@@ -1257,7 +1259,7 @@ function MemberProfileView({
             <div className="section-heading">
               <div>
                 <h2>{isVi ? 'Gói thành viên hiện tại' : 'Active membership package'}</h2>
-                <p>Pro · All Access Multi-Disciplinary (Gym + Yoga + Pilates)</p>
+                <p>{isVi ? 'Gói Pro · Toàn quyền Đa bộ môn (Gym + Yoga + Pilates)' : 'Pro · All Access Multi-Disciplinary (Gym + Yoga + Pilates)'}</p>
               </div>
               <Chip tone="violet">{isVi ? 'Gói cao cấp' : 'Pro Tier'}</Chip>
             </div>
@@ -1356,7 +1358,7 @@ function MemberProfileView({
         {/* Right Column: Digital Pass QR & Card */}
         <div>
           <div className="detail-card" style={{ textAlign: 'center' }}>
-            <div className="eyebrow" style={{ marginBottom: 8 }}>FITPULSE OFFICIAL PASS</div>
+            <div className="eyebrow" style={{ marginBottom: 8 }}>{isVi ? 'THẺ HỘI VIÊN CHÍNH THỨC' : 'FITPULSE OFFICIAL PASS'}</div>
             <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text)' }}>
               {isVi ? 'Thẻ định danh điện tử' : 'Digital Studio Pass'}
             </h2>
