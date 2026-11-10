@@ -102,7 +102,8 @@ export interface BookedSession {
   day: string
   date: string
   color: string
-  status: 'confirmed' | 'attended' | 'cancelled'
+  status: 'confirmed' | 'waitlist' | 'attended' | 'cancelled'
+  waitlistPosition?: number
 }
 
 export const DAY_LABELS_SHORT: Record<string, string> = {
@@ -350,11 +351,61 @@ export default function FitPulseApp() {
     showToast(isVi ? `Đã đặt ca ${displayName}. Còn lại ${creditsLeft - 1} buổi khả dụng.` : `${session.title} booked. ${creditsLeft - 1} credits remaining.`)
   }
 
-  const cancelBooking = (bookedId: number, sessionId: number, sessionTitle: string) => {
+  const joinWaitlist = (session: Session) => {
+    const existing = bookedSessions.find(b => b.sessionId === session.id && (b.status === 'waitlist' || b.status === 'confirmed'))
+    if (existing) {
+      if (existing.status === 'confirmed') {
+        showToast(isVi ? 'Bạn đã đặt ca này rồi.' : 'You are already booked for this session.')
+      } else {
+        showToast(isVi ? 'Bạn đã có trong Hàng chờ của ca này rồi.' : 'You are already in waitlist for this session.')
+      }
+      return
+    }
+
+    const waitlistItem: BookedSession = {
+      id: Date.now(),
+      sessionId: session.id,
+      title: session.title,
+      titleVi: session.titleVi,
+      discipline: session.discipline,
+      instructor: session.instructor,
+      room: session.room,
+      time: session.time,
+      day: session.day,
+      date: '15/10/2026',
+      color: session.color,
+      status: 'waitlist',
+      waitlistPosition: 1,
+    }
+    setBookedSessions(prev => [waitlistItem, ...prev])
+    const displayName = isVi ? (session.titleVi || session.title) : session.title
+    showToast(isVi ? `Đã đăng ký Hàng chờ: ${displayName}! Bạn ở vị trí #1.` : `Joined waitlist: ${session.title}! You are #1 in queue.`)
+  }
+
+  const leaveWaitlist = (bookedId: number, sessionTitle: string) => {
     setBookedSessions(prev => prev.filter(b => b.id !== bookedId))
-    setSessions(items => items.map(item => item.id === sessionId ? { ...item, booked: Math.max(0, item.booked - 1) } : item))
-    setCreditsLeft(c => c + 1)
-    showToast(isVi ? `Đã hủy ca ${sessionTitle}. Đã hoàn trả 1 buổi tập vào tài khoản.` : `Cancelled ${sessionTitle}. 1 credit restored to your package.`)
+    showToast(isVi ? `Đã rời hàng chờ ca ${sessionTitle}.` : `Left waitlist for ${sessionTitle}.`)
+  }
+
+  const cancelBooking = (bookedId: number, sessionId: number, sessionTitle: string) => {
+    // 1. Remove the cancelled booking
+    setBookedSessions(prev => prev.filter(b => b.id !== bookedId))
+
+    // 2. Automated Waitlist Allocation Algorithm: Check if a candidate is queued in waitlist
+    const waitlistCandidate = bookedSessions.find(b => b.sessionId === sessionId && b.status === 'waitlist' && b.id !== bookedId)
+
+    if (waitlistCandidate) {
+      // Auto-promote candidate from waitlist to confirmed spot without decrementing session capacity
+      setBookedSessions(prev => prev.map(b => b.id === waitlistCandidate.id ? { ...b, status: 'confirmed', waitlistPosition: undefined } : b))
+      showToast(isVi
+        ? `Đã hủy ca ${sessionTitle}. Thuật toán đã tự động nâng hạng vị trí Hàng chờ lên ca chính thức!`
+        : `Cancelled ${sessionTitle}. Waitlist candidate automatically promoted to confirmed spot!`)
+    } else {
+      // Normal cancellation: restore capacity and credit
+      setSessions(items => items.map(item => item.id === sessionId ? { ...item, booked: Math.max(0, item.booked - 1) } : item))
+      setCreditsLeft(c => c + 1)
+      showToast(isVi ? `Đã hủy ca ${sessionTitle}. Đã hoàn trả 1 buổi tập vào tài khoản.` : `Cancelled ${sessionTitle}. 1 credit restored to your package.`)
+    }
   }
 
   // Filter allowed navigation items based on logged in user's role (Strict RBAC)
@@ -554,6 +605,8 @@ export default function FitPulseApp() {
                   activeDay={activeDay}
                   setActiveDay={setActiveDay}
                   onSelect={setSelected}
+                  onJoinWaitlist={joinWaitlist}
+                  bookedSessions={bookedSessions}
                   isVi={isVi}
                   user={currentUser}
                   creditsLeft={creditsLeft}
@@ -566,6 +619,7 @@ export default function FitPulseApp() {
                 <MyScheduleView
                   bookedSessions={bookedSessions}
                   onCancel={cancelBooking}
+                  onLeaveWaitlist={leaveWaitlist}
                   onGoToExplore={() => setMemberTab('schedule')}
                   isVi={isVi}
                   showToast={showToast}
@@ -843,7 +897,19 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; 
    PAGE 1: MEMBER STUDIO EXPLORE & BOOKING (MEMBER VIEW)
    ========================================================================== */
 function MemberView({
-  sessions, filter, setFilter, activeDay, setActiveDay, onSelect, isVi, user, creditsLeft, onGoToProfile, onGoToMySchedule
+  sessions,
+  filter,
+  setFilter,
+  activeDay,
+  setActiveDay,
+  onSelect,
+  onJoinWaitlist,
+  bookedSessions,
+  isVi,
+  user,
+  creditsLeft,
+  onGoToProfile,
+  onGoToMySchedule,
 }: {
   sessions: Session[]
   filter: 'All' | Discipline
@@ -851,14 +917,49 @@ function MemberView({
   activeDay: string
   setActiveDay: (d: string) => void
   onSelect: (s: Session) => void
+  onJoinWaitlist: (s: Session) => void
+  bookedSessions: BookedSession[]
   isVi: boolean
   user: User
   creditsLeft: number
   onGoToProfile: () => void
-  onGoToMySchedule: () => void
+  onGoToMySchedule?: () => void
 }) {
-  const filtered = sessions.filter(s => (filter === 'All' || s.discipline === filter) && s.day === activeDay)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [timeFilter, setTimeFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening'>('all')
+
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+  // Multi-dimensional filtering: Day + Discipline + Time of Day + Search Query
+  const filtered = useMemo(() => {
+    return sessions.filter(s => {
+      // 1. Day filter
+      if (s.day !== activeDay) return false
+
+      // 2. Discipline filter
+      if (filter !== 'All' && s.discipline !== filter) return false
+
+      // 3. Time of Day filter
+      const [hStr, mStr] = s.time.split(':')
+      const hour = parseInt(hStr, 10) + (parseInt(mStr || '0', 10) / 60)
+      if (timeFilter === 'morning' && hour >= 12) return false
+      if (timeFilter === 'afternoon' && (hour < 12 || hour >= 17.5)) return false
+      if (timeFilter === 'evening' && hour < 17.5) return false
+
+      // 4. Live Search filter (matches class title, coach, room, or discipline)
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const matchTitle = s.title.toLowerCase().includes(q)
+        const matchTitleVi = s.titleVi ? s.titleVi.toLowerCase().includes(q) : false
+        const matchCoach = s.instructor.toLowerCase().includes(q)
+        const matchRoom = s.room.toLowerCase().includes(q)
+        const matchDiscipline = s.discipline.toLowerCase().includes(q)
+        if (!matchTitle && !matchTitleVi && !matchCoach && !matchRoom && !matchDiscipline) return false
+      }
+
+      return true
+    })
+  }, [sessions, activeDay, filter, timeFilter, searchQuery])
   const copy = isVi ? {
     eyebrow: `Chào buổi sáng, ${user.name.split(' ')[0]}`,
     title: 'Tuần này của bạn, luôn chuyển động.',
@@ -935,23 +1036,76 @@ function MemberView({
             ))}
           </div>
 
-          {/* Strictly simplified tags: Gym / Pilates / Yoga */}
-          <div className="filter-row">
-            {disciplinePills.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setFilter(item.id)}
-                className={`filter-pill ${filter === item.id ? 'selected' : ''}`}
-              >
-                {item.label}
-              </button>
-            ))}
+          {/* Advanced Search & Filtering Suite */}
+          <div className="schedule-filters-stack">
+            {/* Search Input Box */}
+            <div className="search-bar-wrap">
+              <Search className="search-icon" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={isVi ? 'Tìm theo tên ca tập hoặc HLV (ví dụ: Maya, Reformer, Flow, HIIT...)' : 'Search by class or coach (e.g. Maya, Reformer, Flow, HIIT...)'}
+                className="search-input"
+              />
+              {searchQuery && (
+                <button className="search-clear-btn" onClick={() => setSearchQuery('')} aria-label="Clear search">
+                  <X style={{ width: 14, height: 14 }} />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Rows: Disciplines & Time Slots */}
+            <div className="filter-controls-row">
+              {/* Discipline Pills */}
+              <div className="filter-row">
+                {disciplinePills.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setFilter(item.id)}
+                    className={`filter-pill ${filter === item.id ? 'selected' : ''}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Time Slot Pills */}
+              <div className="time-filter-row">
+                {([
+                  { id: 'all', label: isVi ? 'Cả ngày' : 'All hours' },
+                  { id: 'morning', label: isVi ? '🌅 Sáng (<12h)' : '🌅 Morning (<12h)' },
+                  { id: 'afternoon', label: isVi ? '☀️ Chiều (12h-17h30)' : '☀️ Afternoon (12-5:30pm)' },
+                  { id: 'evening', label: isVi ? '🌙 Tối (>17h30)' : '🌙 Evening (>5:30pm)' },
+                ] as const).map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setTimeFilter(item.id)}
+                    className={`filter-pill filter-pill-time ${timeFilter === item.id ? 'selected' : ''}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="session-list">
-            {filtered.map(session => (
-              <SessionRow key={session.id} session={session} onSelect={onSelect} isVi={isVi} />
-            ))}
+            {filtered.map(session => {
+              const isBooked = bookedSessions.some(b => b.sessionId === session.id && b.status === 'confirmed')
+              const isWaitlisted = bookedSessions.some(b => b.sessionId === session.id && b.status === 'waitlist')
+              return (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  onSelect={onSelect}
+                  onJoinWaitlist={onJoinWaitlist}
+                  isVi={isVi}
+                  isBooked={isBooked}
+                  isWaitlisted={isWaitlisted}
+                />
+              )
+            })}
             {filtered.length === 0 && <div className="empty-state">{copy.empty}</div>}
           </div>
         </section>
@@ -978,9 +1132,24 @@ function MemberView({
   )
 }
 
-function SessionRow({ session, onSelect, isVi }: { session: Session; onSelect: (s: Session) => void; isVi: boolean }) {
+function SessionRow({
+  session,
+  onSelect,
+  onJoinWaitlist,
+  isVi,
+  isBooked,
+  isWaitlisted,
+}: {
+  session: Session
+  onSelect: (s: Session) => void
+  onJoinWaitlist: (s: Session) => void
+  isVi: boolean
+  isBooked: boolean
+  isWaitlisted: boolean
+}) {
   const left = session.capacity - session.booked
-  const full = left === 0
+  const full = left <= 0
+
   return (
     <div className="session-row">
       <div className={`discipline-icon ${session.color}`}>
@@ -991,6 +1160,8 @@ function SessionRow({ session, onSelect, isVi }: { session: Session; onSelect: (
           <strong>{getSessionTitle(session, isVi)}</strong>
           {full && <Chip tone="red">{isVi ? 'Hết chỗ' : 'Class full'}</Chip>}
           {!full && left <= 2 && <Chip tone="amber">{left} {isVi ? 'chỗ còn lại' : 'spots left'}</Chip>}
+          {isBooked && <Chip tone="green">{isVi ? 'Đã đặt' : 'Booked'}</Chip>}
+          {isWaitlisted && <Chip tone="amber">{isVi ? 'Đang chờ #1' : 'Waitlist #1'}</Chip>}
         </div>
         <div className="session-meta">
           <span><Clock3 /> {session.time} · {formatDuration(session.duration, isVi)}</span>
@@ -1000,17 +1171,35 @@ function SessionRow({ session, onSelect, isVi }: { session: Session; onSelect: (
       </div>
       <div className="capacity">
         <div className="capacity-bar">
-          <i style={{ width: `${(session.booked / session.capacity) * 100}%` }} />
+          <i style={{ width: `${Math.min(100, (session.booked / session.capacity) * 100)}%` }} />
         </div>
         <span>{session.booked}/{session.capacity} {isVi ? 'đã đặt' : 'booked'}</span>
       </div>
-      <button
-        className={`button ${full ? 'button-disabled' : 'button-dark'}`}
-        disabled={full}
-        onClick={() => onSelect(session)}
-      >
-        {full ? (isVi ? 'Hết chỗ' : 'Full') : (isVi ? 'Đặt ca' : 'Book')} {!full && <ArrowUpRight />}
-      </button>
+
+      {isBooked ? (
+        <button className="button button-booked" disabled>
+          {isVi ? 'Đã đặt' : 'Booked'}
+        </button>
+      ) : isWaitlisted ? (
+        <button className="button button-waitlisted" disabled>
+          {isVi ? 'Hàng chờ #1' : 'Waitlist #1'}
+        </button>
+      ) : full ? (
+        <button
+          className="button button-waitlist"
+          onClick={() => onJoinWaitlist(session)}
+          title={isVi ? 'Đăng ký vào danh sách chờ' : 'Join waitlist queue'}
+        >
+          {isVi ? 'Hàng chờ' : 'Waitlist'} <ArrowUpRight />
+        </button>
+      ) : (
+        <button
+          className="button button-dark"
+          onClick={() => onSelect(session)}
+        >
+          {isVi ? 'Đặt ca' : 'Book'} <ArrowUpRight />
+        </button>
+      )}
     </div>
   )
 }
@@ -1088,16 +1277,21 @@ function BookingModal({ session, onClose, onBook, isVi, creditsLeft }: { session
 function MyScheduleView({
   bookedSessions,
   onCancel,
+  onLeaveWaitlist,
   onGoToExplore,
   isVi,
   showToast,
 }: {
   bookedSessions: BookedSession[]
   onCancel: (bookedId: number, sessionId: number, title: string) => void
+  onLeaveWaitlist: (bookedId: number, title: string) => void
   onGoToExplore: () => void
   isVi: boolean
   showToast: (msg: string) => void
 }) {
+  const confirmedSessions = bookedSessions.filter(b => b.status === 'confirmed')
+  const waitlistSessions = bookedSessions.filter(b => b.status === 'waitlist')
+
   return (
     <>
       <PageHeader
@@ -1111,16 +1305,16 @@ function MyScheduleView({
         }
       />
 
-      {bookedSessions.length > 0 && (
+      {confirmedSessions.length > 0 && (
         <div className="next-session-banner">
           <div className="next-session-info">
             <div className="next-session-icon">
               <Clock3 style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <strong>{isVi ? 'Ca tập tiếp theo: ' : 'Next up: '}{getSessionTitle(bookedSessions[0], isVi)}</strong>
+              <strong>{isVi ? 'Ca tập tiếp theo: ' : 'Next up: '}{getSessionTitle(confirmedSessions[0], isVi)}</strong>
               <p>
-                {formatDay(bookedSessions[0].day, isVi)}, {bookedSessions[0].time} · {formatRoom(bookedSessions[0].room, isVi)} · {isVi ? 'HLV: ' : 'Coach: '}{formatInstructor(bookedSessions[0].instructor, isVi)}
+                {formatDay(confirmedSessions[0].day, isVi)}, {confirmedSessions[0].time} · {formatRoom(confirmedSessions[0].room, isVi)} · {isVi ? 'HLV: ' : 'Coach: '}{formatInstructor(confirmedSessions[0].instructor, isVi)}
               </p>
             </div>
           </div>
@@ -1134,7 +1328,7 @@ function MyScheduleView({
         <div className="section-heading" style={{ marginBottom: 18 }}>
           <div>
             <h2>{isVi ? 'Danh sách ca tập đã đăng ký' : 'Registered classes'}</h2>
-            <p>{bookedSessions.length} {isVi ? 'ca học đang hoạt động' : 'active bookings'}</p>
+            <p>{confirmedSessions.length} {isVi ? 'ca chính thức' : 'confirmed'} · {waitlistSessions.length} {isVi ? 'ca trong hàng chờ' : 'in waitlist'}</p>
           </div>
           <button className="button button-ghost" onClick={() => showToast(isVi ? 'Đã đồng bộ lịch với Google Calendar!' : 'Calendar synced with Google Calendar!')}>
             <CalendarCheck /> {isVi ? 'Đồng bộ Google Calendar' : 'Sync Calendar'}
@@ -1165,7 +1359,13 @@ function MyScheduleView({
                   <div className="booked-card-main">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <strong>{getSessionTitle(item, isVi)}</strong>
-                      <Chip tone="green">{isVi ? 'Đã đặt' : 'Booked'}</Chip>
+                      {item.status === 'waitlist' ? (
+                        <Chip tone="amber">
+                          <Clock3 style={{ width: 10, height: 10 }} /> {isVi ? 'Hàng chờ #1' : 'Waitlist #1'}
+                        </Chip>
+                      ) : (
+                        <Chip tone="green">{isVi ? 'Đã xác nhận' : 'Confirmed'}</Chip>
+                      )}
                     </div>
                     <div className="booked-card-meta">
                       <span><CalendarDays style={{ width: 12, height: 12 }} /> {formatDay(item.day, isVi)}, {item.date}</span>
@@ -1177,15 +1377,27 @@ function MyScheduleView({
                 </div>
 
                 <div className="booked-card-actions">
-                  <button
-                    className="button button-ghost"
-                    onClick={() => cancelBooking(item.id, item.sessionId, item.title)}
-                    style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
-                    title={isVi ? 'Hủy ca và hoàn trả buổi tập' : 'Cancel booking and refund credit'}
-                  >
-                    <Trash2 style={{ width: 13, height: 13 }} />
-                    <span>{isVi ? 'Hủy ca' : 'Cancel'}</span>
-                  </button>
+                  {item.status === 'waitlist' ? (
+                    <button
+                      className="button button-ghost"
+                      onClick={() => onLeaveWaitlist(item.id, getSessionTitle(item, isVi))}
+                      style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
+                      title={isVi ? 'Rời danh sách chờ' : 'Leave waitlist queue'}
+                    >
+                      <Trash2 style={{ width: 13, height: 13 }} />
+                      <span>{isVi ? 'Rời hàng chờ' : 'Leave waitlist'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      className="button button-ghost"
+                      onClick={() => onCancel(item.id, item.sessionId, getSessionTitle(item, isVi))}
+                      style={{ color: '#e27d78', borderColor: 'rgba(226, 125, 120, .3)' }}
+                      title={isVi ? 'Hủy ca và hoàn trả buổi tập' : 'Cancel booking and refund credit'}
+                    >
+                      <Trash2 style={{ width: 13, height: 13 }} />
+                      <span>{isVi ? 'Hủy ca' : 'Cancel'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

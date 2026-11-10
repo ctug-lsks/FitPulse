@@ -687,3 +687,135 @@ button:disabled { cursor: not-allowed; }
   height: 14px;
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   ADVANCED MEMBER SUITE: SEARCH, TIME FILTERS & WAITLIST ENGINE
+   ========================================================================== */
+.schedule-filters-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.search-bar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.search-bar-wrap .search-icon {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  padding: 10px 36px 10px 36px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.theme-light .search-input {
+  background: #f8faf7;
+  color: #0d1e16;
+  border-color: rgba(20, 48, 34, 0.18);
+}
+.search-input:focus {
+  border-color: var(--lime);
+  background: rgba(255, 255, 255, 0.07);
+}
+.theme-light .search-input:focus {
+  border-color: #4f7416;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(79, 116, 22, 0.1);
+}
+.search-clear-btn {
+  position: absolute;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.search-clear-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+.filter-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.time-filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-pill-time {
+  font-size: 9.5px;
+  padding: 6px 10px;
+}
+
+/* Button variants for Waitlist, Booked, and Waitlisted states */
+.button-waitlist {
+  background: rgba(244, 190, 104, 0.12) !important;
+  color: #f4be68 !important;
+  border: 1px solid rgba(244, 190, 104, 0.35) !important;
+  cursor: pointer;
+}
+.button-waitlist:hover {
+  background: rgba(244, 190, 104, 0.22) !important;
+  border-color: #f4be68 !important;
+}
+.theme-light .button-waitlist {
+  background: rgba(148, 93, 27, 0.1) !important;
+  color: #945d1b !important;
+  border-color: rgba(148, 93, 27, 0.35) !important;
+  font-weight: 700;
+}
+.theme-light .button-waitlist:hover {
+  background: rgba(148, 93, 27, 0.18) !important;
+}
+
+.button-booked {
+  background: rgba(108, 224, 188, 0.1) !important;
+  color: var(--teal) !important;
+  border: 1px solid rgba(108, 224, 188, 0.25) !important;
+  cursor: default !important;
+  opacity: 0.9;
+}
+.theme-light .button-booked {
+  background: rgba(20, 114, 87, 0.1) !important;
+  color: #147257 !important;
+  border-color: rgba(20, 114, 87, 0.28) !important;
+  font-weight: 700;
+}
+
+.button-waitlisted {
+  background: rgba(244, 190, 104, 0.16) !important;
+  color: #f4be68 !important;
+  border: 1px solid rgba(244, 190, 104, 0.45) !important;
+  cursor: default !important;
+  opacity: 0.9;
+}
+.theme-light .button-waitlisted {
+  background: rgba(148, 93, 27, 0.14) !important;
+  color: #945d1b !important;
+  border-color: rgba(148, 93, 27, 0.45) !important;
+  font-weight: 700;
+}
