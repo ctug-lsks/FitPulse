@@ -21,6 +21,7 @@ export interface User {
   avatarColor: string
   subtitle: { vi: string; en: string }
   plan: string
+  planVi?: string
 }
 
 export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | 'instructor' | 'admin'; user: User }[] = [
@@ -37,6 +38,7 @@ export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | '
       avatarColor: 'avatar-lime',
       subtitle: { vi: 'Hội viên hoạt động', en: 'Active member' },
       plan: 'Pro · All access (8 credits remaining)',
+      planVi: 'Gói Pro · Toàn quyền truy cập (Còn 8 buổi)',
     },
   },
   {
@@ -52,6 +54,7 @@ export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | '
       avatarColor: 'avatar-1',
       subtitle: { vi: 'HLV Trưởng Pilates & Yoga', en: 'Senior Reformer Coach' },
       plan: 'Certified Instructor',
+      planVi: 'Huấn luyện viên Quốc tế',
     },
   },
   {
@@ -67,6 +70,7 @@ export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | '
       avatarColor: 'avatar-2',
       subtitle: { vi: 'Giám đốc Điều hành Cơ sở', en: 'Studio Operations Director' },
       plan: 'Studio Administrator',
+      planVi: 'Quản trị viên Cơ sở',
     },
   },
 ]
@@ -74,6 +78,7 @@ export const DEMO_CREDENTIALS: { email: string; pass: string; role: 'member' | '
 type Session = {
   id: number
   title: string
+  titleVi?: string
   discipline: Discipline
   instructor: string
   room: string
@@ -89,6 +94,7 @@ export interface BookedSession {
   id: number
   sessionId: number
   title: string
+  titleVi?: string
   discipline: Discipline
   instructor: string
   room: string
@@ -99,17 +105,109 @@ export interface BookedSession {
   status: 'confirmed' | 'attended' | 'cancelled'
 }
 
+export const DAY_LABELS_SHORT: Record<string, string> = {
+  Mon: 'T2',
+  Tue: 'T3',
+  Wed: 'T4',
+  Thu: 'T5',
+  Fri: 'T6',
+  Sat: 'T7',
+  Sun: 'CN',
+}
+
+export function formatDay(day: string, isVi: boolean): string {
+  if (!isVi) return day
+  const map: Record<string, string> = {
+    Mon: 'Thứ Hai',
+    Tue: 'Thứ Ba',
+    Wed: 'Thứ Tư',
+    Thu: 'Thứ Năm',
+    Fri: 'Thứ Sáu',
+    Sat: 'Thứ Bảy',
+    Sun: 'Chủ Nhật',
+  }
+  return map[day] || day
+}
+
+export function formatDuration(duration: string, isVi: boolean): string {
+  if (!isVi) return duration
+  if (duration === 'Flexible') return 'Linh hoạt'
+  return duration.replace('min', 'phút')
+}
+
+export function formatRoom(room: string, isVi: boolean): string {
+  if (!isVi) return room
+  if (room === 'Reformer Studio') return 'Phòng Reformer'
+  if (room === 'Zen Room') return 'Phòng Thảm Zen'
+  if (room === 'Main Floor') return 'Sàn Gym Trung tâm'
+  return room
+}
+
+export function formatInstructor(instructor: string, isVi: boolean): string {
+  if (!isVi) return instructor
+  if (instructor === 'Open access') return 'Tập tự do'
+  return instructor
+}
+
+export function getSessionTitle(session: { title: string; titleVi?: string }, isVi: boolean): string {
+  if (isVi && session.titleVi) return session.titleVi
+  return session.title
+}
+
 const initialSessions: Session[] = [
-  { id: 1, title: 'Reformer Foundations', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '07:00', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Mon' },
-  { id: 2, title: 'Power Flow', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '08:30', duration: '60 min', booked: 14, capacity: 20, color: 'amber', day: 'Mon' },
-  { id: 3, title: 'Open Gym Access', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '10:00', duration: 'Flexible', booked: 32, capacity: 50, color: 'emerald', day: 'Mon' },
-  { id: 4, title: 'Core & Control', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '12:00', duration: '50 min', booked: 6, capacity: 6, color: 'violet', day: 'Tue' },
-  { id: 5, title: 'Slow Sunday Stretch', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '18:00', duration: '60 min', booked: 18, capacity: 20, color: 'amber', day: 'Wed' },
-  { id: 6, title: 'Strength Lab', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '18:30', duration: '45 min', booked: 41, capacity: 50, color: 'emerald', day: 'Thu' },
-  { id: 7, title: 'Athletic Reformer', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '17:30', duration: '50 min', booked: 4, capacity: 6, color: 'violet', day: 'Fri' },
-  { id: 8, title: 'Evening Vinyasa', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '19:00', duration: '60 min', booked: 12, capacity: 20, color: 'amber', day: 'Fri' },
-  { id: 9, title: 'Mobility Reset', discipline: 'Yoga', instructor: 'Alex Morgan', room: 'Zen Room', time: '09:00', duration: '45 min', booked: 8, capacity: 20, color: 'amber', day: 'Sat' },
-  { id: 10, title: 'Open Gym Access', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '11:00', duration: 'Flexible', booked: 27, capacity: 50, color: 'emerald', day: 'Sun' },
+  // MONDAY (Thứ Hai - 14/10)
+  { id: 1, title: 'Reformer Foundations', titleVi: 'Pilates Reformer Căn bản', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '07:00', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Mon' },
+  { id: 2, title: 'Power Flow Yoga', titleVi: 'Yoga Dòng chảy Năng lượng', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '08:30', duration: '60 min', booked: 14, capacity: 20, color: 'amber', day: 'Mon' },
+  { id: 3, title: 'Open Gym Access', titleVi: 'Tập Gym Tự do', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '10:00', duration: 'Flexible', booked: 32, capacity: 50, color: 'emerald', day: 'Mon' },
+  { id: 4, title: 'Athletic Reformer', titleVi: 'Pilates Reformer Thể lực cao', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '17:30', duration: '50 min', booked: 6, capacity: 6, color: 'violet', day: 'Mon' },
+  { id: 5, title: 'Strength & Conditioning Lab', titleVi: 'Gym Thể lực & Sức mạnh Chuyên sâu', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '18:45', duration: '45 min', booked: 41, capacity: 50, color: 'emerald', day: 'Mon' },
+  { id: 6, title: 'Evening Yin Yoga', titleVi: 'Yoga Âm Phục hồi Buổi tối', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '19:45', duration: '60 min', booked: 16, capacity: 20, color: 'amber', day: 'Mon' },
+
+  // TUESDAY (Thứ Ba - 15/10)
+  { id: 7, title: 'Sunrise Vinyasa', titleVi: 'Yoga Vinyasa Bình minh', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '06:45', duration: '60 min', booked: 15, capacity: 20, color: 'amber', day: 'Tue' },
+  { id: 8, title: 'Open Gym Access', titleVi: 'Tập Gym Tự do', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '09:00', duration: 'Flexible', booked: 28, capacity: 50, color: 'emerald', day: 'Tue' },
+  { id: 9, title: 'Core & Control', titleVi: 'Pilates Cơ lõi & Kiểm soát', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '12:00', duration: '50 min', booked: 6, capacity: 6, color: 'violet', day: 'Tue' },
+  { id: 10, title: 'Functional HIIT Circuit', titleVi: 'Gym Kháng lực & Tim mạch HIIT', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '17:00', duration: '45 min', booked: 35, capacity: 50, color: 'emerald', day: 'Tue' },
+  { id: 11, title: 'Reformer Jumpboard Burn', titleVi: 'Pilates Bàn nhảy Đốt mỡ', discipline: 'Pilates', instructor: 'Elena Rostova', room: 'Reformer Studio', time: '18:15', duration: '50 min', booked: 4, capacity: 6, color: 'violet', day: 'Tue' },
+  { id: 12, title: 'Deep Stretch & Sound Bath', titleVi: 'Yoga Giãn cơ Sâu & Chuông xoay', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '19:30', duration: '60 min', booked: 19, capacity: 20, color: 'amber', day: 'Tue' },
+
+  // WEDNESDAY (Thứ Tư - 16/10)
+  { id: 13, title: 'Spine Alignment Reformer', titleVi: 'Pilates Nắn chỉnh Cột sống & Tư thế', discipline: 'Pilates', instructor: 'Elena Rostova', room: 'Reformer Studio', time: '07:00', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Wed' },
+  { id: 14, title: 'Upper Body Hypertrophy', titleVi: 'Gym Phát triển Cơ bắp Thân trên', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '08:30', duration: '50 min', booked: 30, capacity: 50, color: 'emerald', day: 'Wed' },
+  { id: 15, title: 'Open Gym Access', titleVi: 'Tập Gym Tự do', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '11:00', duration: 'Flexible', booked: 22, capacity: 50, color: 'emerald', day: 'Wed' },
+  { id: 16, title: 'Ashtanga Primary Flow', titleVi: 'Yoga Ashtanga Nhịp điệu Cổ điển', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '17:30', duration: '60 min', booked: 16, capacity: 20, color: 'amber', day: 'Wed' },
+  { id: 17, title: 'Sculpt & Tone Reformer', titleVi: 'Pilates Điêu khắc Hình thể', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '18:45', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Wed' },
+  { id: 18, title: 'Slow Wednesday Stretch', titleVi: 'Yoga Giãn cơ Thư giãn Giữa tuần', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '19:45', duration: '60 min', booked: 18, capacity: 20, color: 'amber', day: 'Wed' },
+
+  // THURSDAY (Thứ Năm - 17/10)
+  { id: 19, title: 'Cardio Core Blast', titleVi: 'Gym Kích hoạt Tim mạch & Cơ lõi', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '06:30', duration: '45 min', booked: 38, capacity: 50, color: 'emerald', day: 'Thu' },
+  { id: 20, title: 'Reformer Foundations', titleVi: 'Pilates Reformer Căn bản', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '08:00', duration: '50 min', booked: 6, capacity: 6, color: 'violet', day: 'Thu' },
+  { id: 21, title: 'Open Gym Access', titleVi: 'Tập Gym Tự do', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '10:00', duration: 'Flexible', booked: 25, capacity: 50, color: 'emerald', day: 'Thu' },
+  { id: 22, title: 'Breathwork & Gentle Hatha', titleVi: 'Yoga Luyện khí Pranayama & Hatha', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '17:30', duration: '60 min', booked: 11, capacity: 20, color: 'amber', day: 'Thu' },
+  { id: 23, title: 'Lower Body & Glutes Power', titleVi: 'Gym Sức mạnh Thân dưới & Mông đùi', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '18:30', duration: '50 min', booked: 44, capacity: 50, color: 'emerald', day: 'Thu' },
+  { id: 24, title: 'Athletic Reformer', titleVi: 'Pilates Reformer Thể lực cao', discipline: 'Pilates', instructor: 'Elena Rostova', room: 'Reformer Studio', time: '19:30', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Thu' },
+
+  // FRIDAY (Thứ Sáu - 18/10)
+  { id: 25, title: 'Dynamic Morning Flow', titleVi: 'Yoga Năng động Khởi đầu Ngày mới', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '07:00', duration: '60 min', booked: 17, capacity: 20, color: 'amber', day: 'Fri' },
+  { id: 26, title: 'Open Gym Access', titleVi: 'Tập Gym Tự do', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '09:00', duration: 'Flexible', booked: 34, capacity: 50, color: 'emerald', day: 'Fri' },
+  { id: 27, title: 'Core Balance Reformer', titleVi: 'Pilates Cân bằng Trọng tâm Reformer', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '12:00', duration: '50 min', booked: 6, capacity: 6, color: 'violet', day: 'Fri' },
+  { id: 28, title: 'Total Body Metabolic Circuit', titleVi: 'Gym Vòng lặp Kháng lực Trao đổi chất', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '17:00', duration: '45 min', booked: 40, capacity: 50, color: 'emerald', day: 'Fri' },
+  { id: 29, title: 'Reformer Burn & Sculpt', titleVi: 'Pilates Siết cơ & Đốt mỡ Reformer', discipline: 'Pilates', instructor: 'Elena Rostova', room: 'Reformer Studio', time: '18:15', duration: '50 min', booked: 4, capacity: 6, color: 'violet', day: 'Fri' },
+  { id: 30, title: 'Evening Vinyasa & Meditation', titleVi: 'Yoga Vinyasa & Thiền định Tĩnh tâm', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '19:30', duration: '60 min', booked: 19, capacity: 20, color: 'amber', day: 'Fri' },
+
+  // SATURDAY (Thứ Bảy - 19/10)
+  { id: 31, title: 'Weekend Reformer Masterclass', titleVi: 'Pilates Reformer Chuyên sâu Cuối tuần', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '08:00', duration: '55 min', booked: 6, capacity: 6, color: 'violet', day: 'Sat' },
+  { id: 32, title: 'Mobility Reset & Detox Yoga', titleVi: 'Yoga Phục hồi Vận động & Giải độc', discipline: 'Yoga', instructor: 'Alex Morgan', room: 'Zen Room', time: '09:30', duration: '60 min', booked: 15, capacity: 20, color: 'amber', day: 'Sat' },
+  { id: 33, title: 'Open Gym Access', titleVi: 'Tập Gym Tự do', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '10:30', duration: 'Flexible', booked: 45, capacity: 50, color: 'emerald', day: 'Sat' },
+  { id: 34, title: 'Intro to Reformer Mechanics', titleVi: 'Nhập môn Cơ chế Máy tập Reformer', discipline: 'Pilates', instructor: 'Elena Rostova', room: 'Reformer Studio', time: '15:30', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Sat' },
+  { id: 35, title: 'Powerlifting & Heavy Compound', titleVi: 'Gym Kỹ thuật Nâng tạ Sức mạnh', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '17:00', duration: '60 min', booked: 36, capacity: 50, color: 'emerald', day: 'Sat' },
+
+  // SUNDAY (Chủ Nhật - 20/10)
+  { id: 36, title: 'Gentle Sunday Awakening Yoga', titleVi: 'Yoga Đánh thức Thân tâm Chủ nhật', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '08:30', duration: '60 min', booked: 18, capacity: 20, color: 'amber', day: 'Sun' },
+  { id: 37, title: 'Mindful Reformer Flow', titleVi: 'Pilates Thấu cảm Chuyển động Reformer', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '10:00', duration: '50 min', booked: 6, capacity: 6, color: 'violet', day: 'Sun' },
+  { id: 38, title: 'Open Gym Access', titleVi: 'Tập Gym Tự do', discipline: 'Gym', instructor: 'Open access', room: 'Main Floor', time: '11:00', duration: 'Flexible', booked: 27, capacity: 50, color: 'emerald', day: 'Sun' },
+  { id: 39, title: 'Tibetan Sound Bath & Deep Rest', titleVi: 'Chuông xoay Tây Tạng & Nghỉ ngơi Sâu', discipline: 'Yoga', instructor: 'Noah Williams', room: 'Zen Room', time: '16:00', duration: '60 min', booked: 20, capacity: 20, color: 'amber', day: 'Sun' },
+  { id: 40, title: 'Functional Endurance Lab', titleVi: 'Gym Sức bền Thể lực & Chức năng', discipline: 'Gym', instructor: 'Alex Morgan', room: 'Main Floor', time: '17:30', duration: '50 min', booked: 33, capacity: 50, color: 'emerald', day: 'Sun' },
 ]
 
 const initialBookedSessions: BookedSession[] = [
@@ -117,6 +215,7 @@ const initialBookedSessions: BookedSession[] = [
     id: 101,
     sessionId: 1,
     title: 'Reformer Foundations',
+    titleVi: 'Pilates Reformer Căn bản',
     discipline: 'Pilates',
     instructor: 'Maya Chen',
     room: 'Reformer Studio',
@@ -128,12 +227,13 @@ const initialBookedSessions: BookedSession[] = [
   },
   {
     id: 102,
-    sessionId: 5,
-    title: 'Slow Sunday Stretch',
+    sessionId: 18,
+    title: 'Slow Wednesday Stretch',
+    titleVi: 'Yoga Giãn cơ Thư giãn Giữa tuần',
     discipline: 'Yoga',
     instructor: 'Noah Williams',
     room: 'Zen Room',
-    time: '18:00',
+    time: '19:45',
     day: 'Wed',
     date: '16/10/2026',
     color: 'amber',
@@ -233,6 +333,7 @@ export default function FitPulseApp() {
       id: Date.now(),
       sessionId: session.id,
       title: session.title,
+      titleVi: session.titleVi,
       discipline: session.discipline,
       instructor: session.instructor,
       room: session.room,
@@ -245,7 +346,8 @@ export default function FitPulseApp() {
     setBookedSessions(prev => [newBooked, ...prev])
     setCreditsLeft(c => c - 1)
     setSelected(null)
-    showToast(isVi ? `Đã đặt ca ${session.title}. Còn lại ${creditsLeft - 1} buổi khả dụng.` : `${session.title} booked. ${creditsLeft - 1} credits remaining.`)
+    const displayName = isVi ? (session.titleVi || session.title) : session.title
+    showToast(isVi ? `Đã đặt ca ${displayName}. Còn lại ${creditsLeft - 1} buổi khả dụng.` : `${session.title} booked. ${creditsLeft - 1} credits remaining.`)
   }
 
   const cancelBooking = (bookedId: number, sessionId: number, sessionTitle: string) => {
@@ -766,14 +868,11 @@ function MemberView({
     schedule: 'Lịch studio',
     week: 'Tuần 14 — 20 tháng 10, 2026',
     thisWeek: 'Tuần này',
-    all: 'Tất cả bộ môn',
-    gym: 'Phòng gym',
-    yoga: 'Thảm yoga',
-    pilates: 'Pilates reformer',
-    empty: 'Không có buổi tập phù hợp.',
+    empty: 'Không có buổi tập nào phù hợp.',
     streak: 'Bạn đã duy trì chuỗi 4 tuần',
     goal: `Còn ${creditsLeft} buổi tập khả dụng trong tháng này.`,
-    monthly: 'Buổi tập khả dụng'
+    monthly: 'Buổi tập khả dụng',
+    allDisciplines: 'Tất cả',
   } : {
     eyebrow: `Good morning, ${user.name.split(' ')[0]}`,
     title: 'Your week, in motion.',
@@ -782,15 +881,20 @@ function MemberView({
     schedule: 'Studio schedule',
     week: 'Week of October 14 — 20, 2026',
     thisWeek: 'This week',
-    all: 'All disciplines',
-    gym: 'Open gym',
-    yoga: 'Yoga mat',
-    pilates: 'Pilates reformer',
     empty: 'No sessions match this filter.',
     streak: "You're on a 4 week streak",
     goal: `${creditsLeft} credits remaining in your active package.`,
-    monthly: 'Remaining credits'
+    monthly: 'Remaining credits',
+    allDisciplines: 'All',
   }
+
+  // Simplified filter tags strictly: Gym / Pilates / Yoga (and All)
+  const disciplinePills: { id: 'All' | Discipline; label: string }[] = [
+    { id: 'All', label: copy.allDisciplines },
+    { id: 'Gym', label: 'Gym' },
+    { id: 'Pilates', label: 'Pilates' },
+    { id: 'Yoga', label: 'Yoga' },
+  ]
 
   return (
     <>
@@ -823,20 +927,21 @@ function MemberView({
           <div className="day-tabs">
             {days.map(day => (
               <button key={day} className={day === activeDay ? 'selected' : ''} onClick={() => setActiveDay(day)}>
-                <span>{day}</span>
+                <span>{isVi ? DAY_LABELS_SHORT[day] : day}</span>
                 <strong>{14 + days.indexOf(day)}</strong>
               </button>
             ))}
           </div>
 
+          {/* Strictly simplified tags: Gym / Pilates / Yoga */}
           <div className="filter-row">
-            {(['All', 'Gym', 'Yoga', 'Pilates'] as const).map(item => (
+            {disciplinePills.map(item => (
               <button
-                key={item}
-                onClick={() => setFilter(item)}
-                className={`filter-pill ${filter === item ? 'selected' : ''}`}
+                key={item.id}
+                onClick={() => setFilter(item.id)}
+                className={`filter-pill ${filter === item.id ? 'selected' : ''}`}
               >
-                {item === 'All' ? copy.all : item === 'Pilates' ? copy.pilates : item === 'Yoga' ? copy.yoga : copy.gym}
+                {item.label}
               </button>
             ))}
           </div>
@@ -881,14 +986,14 @@ function SessionRow({ session, onSelect, isVi }: { session: Session; onSelect: (
       </div>
       <div className="session-main">
         <div className="session-title">
-          <strong>{session.title}</strong>
+          <strong>{getSessionTitle(session, isVi)}</strong>
           {full && <Chip tone="red">{isVi ? 'Hết chỗ' : 'Class full'}</Chip>}
-          {!full && left <= 2 && <Chip tone="amber">{left} {isVi ? 'chỗ còn lại' : 'left'}</Chip>}
+          {!full && left <= 2 && <Chip tone="amber">{left} {isVi ? 'chỗ còn lại' : 'spots left'}</Chip>}
         </div>
         <div className="session-meta">
-          <span><Clock3 /> {session.time} · {session.duration}</span>
-          <span><Users /> {session.instructor}</span>
-          <span><MapPin /> {session.room}</span>
+          <span><Clock3 /> {session.time} · {formatDuration(session.duration, isVi)}</span>
+          <span><Users /> {formatInstructor(session.instructor, isVi)}</span>
+          <span><MapPin /> {formatRoom(session.room, isVi)}</span>
         </div>
       </div>
       <div className="capacity">
@@ -902,7 +1007,7 @@ function SessionRow({ session, onSelect, isVi }: { session: Session; onSelect: (
         disabled={full}
         onClick={() => onSelect(session)}
       >
-        {full ? (isVi ? 'Hết' : 'Full') : (isVi ? 'Đặt ca' : 'Book')} {!full && <ArrowUpRight />}
+        {full ? (isVi ? 'Hết chỗ' : 'Full') : (isVi ? 'Đặt ca' : 'Book')} {!full && <ArrowUpRight />}
       </button>
     </div>
   )
@@ -912,14 +1017,14 @@ function MembershipCard({ user, isVi, creditsLeft, onGoToProfile }: { user: User
   return (
     <aside className="membership-card">
       <div className="membership-top">
-        <span>FITPULSE DIGITAL PASS</span>
+        <span>{isVi ? 'THẺ HỘI VIÊN SỐ' : 'FITPULSE DIGITAL PASS'}</span>
         <QrCode />
       </div>
       <div className="member-name">
         <div className={`avatar avatar-large ${user.avatarColor}`}>{user.avatar}</div>
         <div>
           <strong>{user.name}</strong>
-          <span>{user.plan}</span>
+          <span>{isVi ? (user.planVi || user.plan) : user.plan}</span>
         </div>
       </div>
       <div className="qr-box" onClick={onGoToProfile} style={{ cursor: onGoToProfile ? 'pointer' : 'default' }} title={isVi ? 'Nhấn để xem thẻ chi tiết' : 'Click to view full pass'}>
@@ -947,14 +1052,14 @@ function BookingModal({ session, onClose, onBook, isVi, creditsLeft }: { session
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className={`modal-banner ${session.color}`}>
           <button className="icon-button light" onClick={onClose} aria-label="Close"><X /></button>
-          <div className="modal-discipline">{session.discipline} session</div>
-          <h2>{session.title}</h2>
+          <div className="modal-discipline">{isVi ? `Buổi tập ${session.discipline}` : `${session.discipline} session`}</div>
+          <h2>{getSessionTitle(session, isVi)}</h2>
         </div>
         <div className="modal-content">
           <div className="modal-details">
-            <span><Clock3 /> {session.time} · {session.duration}</span>
-            <span><MapPin /> {session.room}</span>
-            <span><Users /> {session.instructor}</span>
+            <span><Clock3 /> {session.time} · {formatDuration(session.duration, isVi)}</span>
+            <span><MapPin /> {formatRoom(session.room, isVi)}</span>
+            <span><Users /> {formatInstructor(session.instructor, isVi)}</span>
           </div>
           <div className="credit-box">
             <div>
@@ -1011,9 +1116,9 @@ function MyScheduleView({
               <Clock3 style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <strong>{isVi ? 'Ca tập tiếp theo: ' : 'Next up: '}{bookedSessions[0].title}</strong>
+              <strong>{isVi ? 'Ca tập tiếp theo: ' : 'Next up: '}{getSessionTitle(bookedSessions[0], isVi)}</strong>
               <p>
-                {bookedSessions[0].day}, {bookedSessions[0].time} · {bookedSessions[0].room} · HLV: {bookedSessions[0].instructor}
+                {formatDay(bookedSessions[0].day, isVi)}, {bookedSessions[0].time} · {formatRoom(bookedSessions[0].room, isVi)} · {isVi ? 'HLV: ' : 'Coach: '}{formatInstructor(bookedSessions[0].instructor, isVi)}
               </p>
             </div>
           </div>
@@ -1057,14 +1162,14 @@ function MyScheduleView({
                   </div>
                   <div className="booked-card-main">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong>{item.title}</strong>
+                      <strong>{getSessionTitle(item, isVi)}</strong>
                       <Chip tone="green">{isVi ? 'Đã đặt' : 'Booked'}</Chip>
                     </div>
                     <div className="booked-card-meta">
-                      <span><CalendarDays style={{ width: 12, height: 12 }} /> {item.day}, {item.date}</span>
+                      <span><CalendarDays style={{ width: 12, height: 12 }} /> {formatDay(item.day, isVi)}, {item.date}</span>
                       <span><Clock3 style={{ width: 12, height: 12 }} /> {item.time}</span>
-                      <span><Users style={{ width: 12, height: 12 }} /> {item.instructor}</span>
-                      <span><MapPin style={{ width: 12, height: 12 }} /> {item.room}</span>
+                      <span><Users style={{ width: 12, height: 12 }} /> {formatInstructor(item.instructor, isVi)}</span>
+                      <span><MapPin style={{ width: 12, height: 12 }} /> {formatRoom(item.room, isVi)}</span>
                     </div>
                   </div>
                 </div>
@@ -1309,7 +1414,7 @@ function InstructorView({ sessions, showToast, user, isVi }: { sessions: Session
   return (
     <>
       <PageHeader
-        eyebrow="Tuesday, October 15, 2026"
+        eyebrow={isVi ? 'Thứ Ba, ngày 15 tháng 10 năm 2026' : 'Tuesday, October 15, 2026'}
         title={isVi ? 'Trung tâm điều phối Huấn luyện viên' : 'Coach command center.'}
         description={isVi ? `Chào buổi sáng, ${user.name}. Đây là lịch giảng dạy hôm nay của bạn.` : `Good morning, ${user.name}. Here's your teaching schedule.`}
         action={<button className="button button-primary"><Plus /> {isVi ? 'Thêm ghi chú' : 'Add note'}</button>}
@@ -1332,8 +1437,8 @@ function InstructorView({ sessions, showToast, user, isVi }: { sessions: Session
                 {s.discipline === 'Pilates' ? <Target /> : <Activity />}
               </div>
               <div>
-                <strong>{s.title}</strong>
-                <span>{s.time} · {s.room}</span>
+                <strong>{getSessionTitle(s, isVi)}</strong>
+                <span>{s.time} · {formatRoom(s.room, isVi)}</span>
               </div>
               <div className="class-count">
                 <strong>{s.booked}/{s.capacity}</strong>
@@ -1344,8 +1449,8 @@ function InstructorView({ sessions, showToast, user, isVi }: { sessions: Session
           ))}
           <div className="next-up">
             <span className="eyebrow">{isVi ? 'CA TIẾP THEO' : 'NEXT UP'}</span>
-            <strong>Core & Control</strong>
-            <p>{isVi ? 'Bắt đầu sau 2h 14m · Reformer Studio' : 'Starts in 2h 14m · Reformer Studio'}</p>
+            <strong>{isVi ? 'Pilates Cơ lõi & Kiểm soát' : 'Core & Control'}</strong>
+            <p>{isVi ? 'Bắt đầu sau 2h 14m · Phòng Reformer' : 'Starts in 2h 14m · Reformer Studio'}</p>
           </div>
         </section>
 
@@ -1353,8 +1458,8 @@ function InstructorView({ sessions, showToast, user, isVi }: { sessions: Session
           <div className="section-heading">
             <div>
               <div className="eyebrow accent-eyebrow">{isVi ? 'DANH SÁCH HỌC VIÊN' : 'LIVE ROSTER'}</div>
-              <h2>{selectedClass.title}</h2>
-              <p>{selectedClass.time} · {selectedClass.room}</p>
+              <h2>{getSessionTitle(selectedClass, isVi)}</h2>
+              <p>{selectedClass.time} · {formatRoom(selectedClass.room, isVi)}</p>
             </div>
             <Chip tone="green"><span className="pulse-dot" /> {selectedClass.booked} {isVi ? 'đã đặt' : 'booked'}</Chip>
           </div>
@@ -1402,7 +1507,7 @@ function AdminView({ sessions, setSessions, showToast, isVi }: { sessions: Sessi
   return (
     <>
       <PageHeader
-        eyebrow="Operations overview · October 2026"
+        eyebrow={isVi ? 'Tổng quan vận hành · Tháng 10, 2026' : 'Operations overview · October 2026'}
         title={isVi ? 'Bảng điều khiển Quản trị Studio' : 'Studio intelligence.'}
         description={isVi ? 'Cái nhìn toàn diện theo thời gian thực về toàn bộ hệ sinh thái thể thao.' : 'A real-time view of your wellness ecosystem.'}
         action={<button className="button button-primary" onClick={() => setShowForm(!showForm)}><Plus /> {isVi ? 'Mở ca tập mới' : 'New session'}</button>}
@@ -1421,10 +1526,10 @@ function AdminView({ sessions, setSessions, showToast, isVi }: { sessions: Sessi
       )}
 
       <div className="kpi-grid">
-        <Kpi icon={<Users />} label={isVi ? 'Hội viên hoạt động' : 'Active members'} value="1,284" change="+12.6%" tone="emerald" />
-        <Kpi icon={<Check />} label={isVi ? 'Lượt check-in hôm nay' : "Today's check-ins"} value="186" change="+8.4%" tone="blue" />
-        <Kpi icon={<BarChart3 />} label={isVi ? 'Tỷ lệ lấp đầy (CUR)' : 'Capacity utilization'} value={`${Math.round((totalBooked / totalCapacity) * 100)}%`} change="+4.2%" tone="violet" />
-        <Kpi icon={<Sparkles />} label={isVi ? 'Doanh thu tháng' : 'Monthly revenue'} value="$48.2k" change="+16.8%" tone="amber" />
+        <Kpi icon={<Users />} label={isVi ? 'Hội viên hoạt động' : 'Active members'} value="1,284" change="+12.6%" tone="emerald" isVi={isVi} />
+        <Kpi icon={<Check />} label={isVi ? 'Lượt check-in hôm nay' : "Today's check-ins"} value="186" change="+8.4%" tone="blue" isVi={isVi} />
+        <Kpi icon={<BarChart3 />} label={isVi ? 'Tỷ lệ lấp đầy (CUR)' : 'Capacity utilization'} value={`${Math.round((totalBooked / totalCapacity) * 100)}%`} change="+4.2%" tone="violet" isVi={isVi} />
+        <Kpi icon={<Sparkles />} label={isVi ? 'Doanh thu tháng' : 'Monthly revenue'} value="$48.2k" change="+16.8%" tone="amber" isVi={isVi} />
       </div>
 
       <div className="admin-grid">
@@ -1446,13 +1551,13 @@ function AdminView({ sessions, setSessions, showToast, isVi }: { sessions: Sessi
   )
 }
 
-function Kpi({ icon, label, value, change, tone }: { icon: React.ReactNode; label: string; value: string; change: string; tone: string }) {
+function Kpi({ icon, label, value, change, tone, isVi }: { icon: React.ReactNode; label: string; value: string; change: string; tone: string; isVi: boolean }) {
   return (
     <div className="kpi-card">
       <div className={`kpi-icon ${tone}`}>{icon}</div>
       <span>{label}</span>
       <strong>{value}</strong>
-      <small><ArrowUpRight /> {change} <em>vs last month</em></small>
+      <small><ArrowUpRight /> {change} <em>{isVi ? 'so với tháng trước' : 'vs last month'}</em></small>
     </div>
   )
 }
@@ -1466,7 +1571,7 @@ function OccupancyChart({ isVi }: { isVi: boolean }) {
           <h2>{isVi ? 'Tỷ lệ lấp đầy theo giờ' : 'Studio occupancy'}</h2>
           <p>{isVi ? 'Mức độ khai thác trung bình các khung giờ' : 'Average utilization by hour'}</p>
         </div>
-        <Chip tone="green">Live</Chip>
+        <Chip tone="green">{isVi ? 'Trực tiếp' : 'Live'}</Chip>
       </div>
       <div className="bar-chart">
         {values.map((value, i) => (
@@ -1508,7 +1613,12 @@ function DistributionChart({ isVi }: { isVi: boolean }) {
 }
 
 function MemberTable({ isVi }: { isVi: boolean }) {
-  const rows = [
+  const rows = isVi ? [
+    ['Jordan Davis', 'Gói Pro · Toàn quyền', 'Hôm nay, 08:42', 'Hoạt động', 'JD'],
+    ['Sofia Patel', 'Gói Không giới hạn', 'Hôm nay, 07:15', 'Hoạt động', 'SP'],
+    ['Marcus Lee', 'Gói 10 buổi tập', 'Hôm qua, 18:30', 'Hoạt động', 'ML'],
+    ['Emma Wilson', 'Gói Yoga tháng', '13/10, 11:20', 'Sắp hết hạn', 'EW']
+  ] : [
     ['Jordan Davis', 'Pro · All access', 'Today, 8:42 AM', 'Active', 'JD'],
     ['Sofia Patel', 'Unlimited', 'Today, 7:15 AM', 'Active', 'SP'],
     ['Marcus Lee', '10 session pack', 'Yesterday, 6:30 PM', 'Active', 'ML'],
@@ -1537,7 +1647,7 @@ function MemberTable({ isVi }: { isVi: boolean }) {
               </td>
               <td>{row[1]}</td>
               <td>{row[2]}</td>
-              <td><Chip tone={row[3] === 'Active' ? 'green' : 'amber'}>{row[3]}</Chip></td>
+              <td><Chip tone={row[3] === 'Active' || row[3] === 'Hoạt động' ? 'green' : 'amber'}>{row[3]}</Chip></td>
               <td><MoreHorizontal /></td>
             </tr>
           ))}
@@ -1631,17 +1741,17 @@ function SimulationView({ showToast, isVi }: { showToast: (m: string) => void; i
   return (
     <>
       <PageHeader
-        eyebrow="Research sandbox · v1.0"
+        eyebrow={isVi ? 'Môi trường nghiên cứu · v1.0' : 'Research sandbox · v1.0'}
         title={isVi ? 'Động cơ Phân bổ Lịch trình Thông minh' : 'The scheduling engine.'}
         description={isVi ? 'Quan sát cách FitPulse xử lý sức chứa máy, xung đột lịch HLV và tối ưu hóa thời gian thực.' : 'Observe how FitPulse handles capacity, conflicts, and allocation in real time.'}
-        action={<Chip tone="green"><span className="pulse-dot" /> Engine online</Chip>}
+        action={<Chip tone="green"><span className="pulse-dot" /> {isVi ? 'Động cơ trực tuyến' : 'Engine online'}</Chip>}
       />
 
       <div className="simulation-hero">
         <div className="sim-copy">
           <div className="sim-icon"><Zap /></div>
           <div className="eyebrow accent-eyebrow">CAPACITY-CONSTRAINED OPTIMIZER</div>
-          <h2>Every slot, <em>perfectly placed.</em></h2>
+          <h2>{isVi ? <>Từng khung giờ, <em>phân bổ hoàn hảo.</em></> : <>Every slot, <em>perfectly placed.</em></>}</h2>
           <p>
             {isVi
               ? 'Thuật toán tối ưu hóa của FitPulse liên tục đánh giá nhu cầu, quỹ thời gian của HLV, ràng buộc phòng tập và số lượng máy Pilates để giữ cho studio vận hành ở công suất cao nhất.'
@@ -1662,7 +1772,7 @@ function SimulationView({ showToast, isVi }: { showToast: (m: string) => void; i
           <div className="orbit orbit-two" />
           <div className="sim-core"><Zap /></div>
           <span className="node node-one">6/6</span>
-          <span className="node node-two">0 conflicts</span>
+          <span className="node node-two">{isVi ? '0 xung đột' : '0 conflicts'}</span>
           <span className="node node-three"><Clock3 /> 92ms</span>
         </div>
       </div>
