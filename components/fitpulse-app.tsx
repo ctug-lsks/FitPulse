@@ -163,6 +163,83 @@ export function getSessionTitle(session: { title: string; titleVi?: string }, is
   return session.title
 }
 
+/* Shared Date & Week Navigation Helpers */
+export function getCurrentMonday(): Date {
+  const now = new Date()
+  const day = now.getDay() // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const diffToMonday = (day === 0 ? -6 : 1) - day
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diffToMonday)
+  monday.setHours(0, 0, 0, 0)
+  return monday
+}
+
+export function getTodayDayKey(): string {
+  const day = new Date().getDay()
+  const dayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  return dayKeys[day]
+}
+
+export function getDayDate(offset: number, dayIndex: number): Date {
+  const monday = getCurrentMonday()
+  const targetDate = new Date(monday)
+  targetDate.setDate(monday.getDate() + offset * 7 + dayIndex)
+  return targetDate
+}
+
+export function getWeekRange(offset: number, isVi: boolean): string {
+  const baseMonday = getCurrentMonday()
+  const monday = new Date(baseMonday)
+  monday.setDate(baseMonday.getDate() + offset * 7)
+
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  const mMonth = monday.getMonth() + 1
+  const sMonth = sunday.getMonth() + 1
+  const sYear = sunday.getFullYear()
+
+  if (isVi) {
+    if (mMonth === sMonth) {
+      return `Tuần ${monday.getDate()} — ${sunday.getDate()} tháng ${sMonth}, ${sYear}`
+    }
+    return `Tuần ${monday.getDate()}/${mMonth} — ${sunday.getDate()}/${sMonth}, ${sYear}`
+  } else {
+    const mStr = monday.toLocaleString('en-US', { month: 'short' })
+    const sStr = sunday.toLocaleString('en-US', { month: 'short' })
+    if (mMonth === sMonth) {
+      return `Week of ${mStr} ${monday.getDate()} — ${sunday.getDate()}, ${sYear}`
+    }
+    return `Week of ${mStr} ${monday.getDate()} — ${sStr} ${sunday.getDate()}, ${sYear}`
+  }
+}
+
+export function getFullDayDateLabel(offset: number, dayIndex: number, isVi: boolean): string {
+  const targetDate = getDayDate(offset, dayIndex)
+  const daysVi = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật']
+  const daysEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const dayName = isVi ? daysVi[dayIndex] : daysEn[dayIndex]
+  const d = targetDate.getDate()
+  const m = targetDate.getMonth() + 1
+  const y = targetDate.getFullYear()
+  if (isVi) {
+    return `${dayName}, ngày ${d} tháng ${m} năm ${y}`
+  } else {
+    const monthName = targetDate.toLocaleString('en-US', { month: 'long' })
+    return `${dayName}, ${monthName} ${d}, ${y}`
+  }
+}
+
+export function formatSessionDate(day: string, offset: number = 0): string {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const idx = days.indexOf(day)
+  const d = getDayDate(offset, idx >= 0 ? idx : 0)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
 const initialSessions: Session[] = [
   // MONDAY (Thứ Hai - 14/10)
   { id: 1, title: 'Reformer Foundations', titleVi: 'Pilates Reformer Căn bản', discipline: 'Pilates', instructor: 'Maya Chen', room: 'Reformer Studio', time: '07:00', duration: '50 min', booked: 5, capacity: 6, color: 'violet', day: 'Mon' },
@@ -230,7 +307,7 @@ const initialBookedSessions: BookedSession[] = [
     room: 'Reformer Studio',
     time: '07:00',
     day: 'Mon',
-    date: '14/10/2026',
+    date: formatSessionDate('Mon', 0),
     color: 'violet',
     status: 'confirmed',
   },
@@ -244,7 +321,7 @@ const initialBookedSessions: BookedSession[] = [
     room: 'Zen Room',
     time: '19:45',
     day: 'Wed',
-    date: '16/10/2026',
+    date: formatSessionDate('Wed', 0),
     color: 'amber',
     status: 'confirmed',
   },
@@ -276,7 +353,7 @@ export default function FitPulseApp() {
   const [selected, setSelected] = useState<Session | null>(null)
   const [toast, setToast] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
-  const [activeDay, setActiveDay] = useState('Mon')
+  const [activeDay, setActiveDay] = useState(getTodayDayKey)
   const [lightTheme, setLightTheme] = useState(true)
   const [language, setLanguage] = useState<'vi' | 'en'>('vi')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -438,7 +515,7 @@ export default function FitPulseApp() {
       room: session.room,
       time: session.time,
       day: session.day,
-      date: session.date || '15/10/2026',
+      date: session.date || formatSessionDate(session.day, 0),
       color: session.color,
       status: 'confirmed',
     }
@@ -470,7 +547,7 @@ export default function FitPulseApp() {
       room: session.room,
       time: session.time,
       day: session.day,
-      date: session.date || '15/10/2026',
+      date: session.date || formatSessionDate(session.day, 0),
       color: session.color,
       status: 'waitlist',
       waitlistPosition: 1,
@@ -1079,56 +1156,6 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; 
   )
 }
 
-/* Shared Date & Week Navigation Helpers */
-function getDayDate(offset: number, dayIndex: number) {
-  const baseMonday = new Date(2026, 9, 14)
-  const targetDate = new Date(baseMonday)
-  targetDate.setDate(baseMonday.getDate() + offset * 7 + dayIndex)
-  return targetDate
-}
-
-function getWeekRange(offset: number, isVi: boolean) {
-  const baseMonday = new Date(2026, 9, 14)
-  const monday = new Date(baseMonday)
-  monday.setDate(baseMonday.getDate() + offset * 7)
-
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-
-  const mMonth = monday.getMonth() + 1
-  const sMonth = sunday.getMonth() + 1
-  const sYear = sunday.getFullYear()
-
-  if (isVi) {
-    if (mMonth === sMonth) {
-      return `Tuần ${monday.getDate()} — ${sunday.getDate()} tháng ${sMonth}, ${sYear}`
-    }
-    return `Tuần ${monday.getDate()}/${mMonth} — ${sunday.getDate()}/${sMonth}, ${sYear}`
-  } else {
-    const mStr = monday.toLocaleString('en-US', { month: 'short' })
-    const sStr = sunday.toLocaleString('en-US', { month: 'short' })
-    if (mMonth === sMonth) {
-      return `Week of ${mStr} ${monday.getDate()} — ${sunday.getDate()}, ${sYear}`
-    }
-    return `Week of ${mStr} ${monday.getDate()} — ${sStr} ${sunday.getDate()}, ${sYear}`
-  }
-}
-
-function getFullDayDateLabel(offset: number, dayIndex: number, isVi: boolean) {
-  const targetDate = getDayDate(offset, dayIndex)
-  const daysVi = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật']
-  const daysEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-  const dayName = isVi ? daysVi[dayIndex] : daysEn[dayIndex]
-  const d = targetDate.getDate()
-  const m = targetDate.getMonth() + 1
-  const y = targetDate.getFullYear()
-  if (isVi) {
-    return `${dayName}, ngày ${d} tháng ${m} năm ${y}`
-  } else {
-    const monthName = targetDate.toLocaleString('en-US', { month: 'long' })
-    return `${dayName}, ${monthName} ${d}, ${y}`
-  }
-}
 
 /* ==========================================================================
    PAGE 1: MEMBER STUDIO EXPLORE & BOOKING (MEMBER VIEW)
@@ -1304,7 +1331,7 @@ function MemberView({
             <button
               type="button"
               className="button button-ghost"
-              onClick={() => { setWeekOffset(0); setActiveDay('Mon'); }}
+              onClick={() => { setWeekOffset(0); setActiveDay(getTodayDayKey()); }}
               title={isVi ? 'Trở về tuần hiện tại' : 'Jump to current week'}
             >
               <CalendarDays /> {copy.thisWeek}
@@ -2196,7 +2223,7 @@ function InstructorView({
 }) {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const [weekOffset, setWeekOffset] = useState(0)
-  const [activeDay, setActiveDay] = useState('Mon')
+  const [activeDay, setActiveDay] = useState(getTodayDayKey)
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
   const [checkedMap, setCheckedMap] = useState<Record<number, number[]>>({ 1: [1, 2], 4: [1] })
   const [showNoteModal, setShowNoteModal] = useState(false)
@@ -2355,7 +2382,7 @@ function InstructorView({
         <button
           type="button"
           className="button button-ghost"
-          onClick={() => { setWeekOffset(0); setActiveDay('Mon'); setSelectedClassId(null); }}
+          onClick={() => { setWeekOffset(0); setActiveDay(getTodayDayKey()); setSelectedClassId(null); }}
           title={isVi ? 'Trở về tuần hiện tại' : 'Return to current week'}
         >
           <CalendarDays /> {isVi ? 'Tuần này' : 'This week'}
@@ -2987,7 +3014,7 @@ function AdminView({ sessions, setSessions, showToast, isVi }: { sessions: Sessi
   return (
     <>
       <PageHeader
-        eyebrow={isVi ? 'Tổng quan vận hành · Tháng 10, 2026' : 'Operations overview · October 2026'}
+        eyebrow={isVi ? `Tổng quan vận hành · Tháng ${new Date().getMonth() + 1}, ${new Date().getFullYear()}` : `Operations overview · ${new Date().toLocaleString('en-US', { month: 'long' })} ${new Date().getFullYear()}`}
         title={isVi ? 'Bảng điều khiển Quản trị Studio' : 'Studio intelligence.'}
         description={isVi ? 'Cái nhìn toàn diện theo thời gian thực về toàn bộ hệ sinh thái thể thao.' : 'A real-time view of your wellness ecosystem.'}
         action={<button className="button button-primary" onClick={() => setShowForm(!showForm)}><Plus /> {isVi ? 'Mở ca tập mới' : 'New session'}</button>}
